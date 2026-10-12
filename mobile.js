@@ -158,18 +158,25 @@
 
   function parseDateValue(dateStr) {
     if (!dateStr) return new Date(0);
-    const d = new Date(dateStr);
-    if (!isNaN(d.getTime())) return d;
-    const parts = String(dateStr).split('-');
-    if (parts.length === 3) {
-      const monthNames = { 'jan':0, 'feb':1, 'mar':2, 'apr':3, 'may':4, 'jun':5, 'jul':6, 'aug':7, 'sep':8, 'oct':9, 'nov':10, 'dec':11 };
+    const str = String(dateStr).trim();
+    const months = {
+      'jan':0, 'feb':1, 'mar':2, 'apr':3, 'may':4, 'jun':5,
+      'jul':6, 'aug':7, 'sep':8, 'oct':9, 'nov':10, 'dec':11,
+      'une':5
+    };
+    const parts = str.split(/[-/ ]+/);
+    if (parts.length >= 2) {
       const day = parseInt(parts[0], 10);
-      const m = monthNames[parts[1].toLowerCase().slice(0, 3)];
-      const y = parseInt(parts[2], 10);
-      if (!isNaN(day) && m !== undefined && !isNaN(y)) {
-        return new Date(y, m, day);
+      const mToken = parts[1].toLowerCase().slice(0, 3);
+      const m = months[mToken];
+      let y = parts.length >= 3 ? parseInt(parts[2], 10) : 2026;
+      if (isNaN(y) || y < 100) y = 2026;
+      if (!isNaN(day) && m !== undefined) {
+        return new Date(Date.UTC(y, m, day));
       }
     }
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d;
     return new Date(0);
   }
 
@@ -1184,6 +1191,78 @@
     return lastFilledDateRow + 1;
   }
 
+  // ==================== CHRONOLOGICAL DATE INSERTION ENGINE ====================
+  function findInsertionRowForDate(dateStr) {
+    let highestFilledRow = 1;
+    for (let i = 0; i < rawLedgerData.length; i++) {
+      const r = rawLedgerData[i];
+      const rNum = r.row || (i + 2);
+      const d = (r.date || '').trim();
+      if (d && rNum > highestFilledRow) {
+        highestFilledRow = rNum;
+      }
+    }
+
+    const targetDate = parseDateValue(dateStr);
+    const targetTime = targetDate ? targetDate.getTime() : 0;
+
+    if (!targetTime || isNaN(targetTime) || targetTime <= 0) {
+      return {
+        insertAfterRow: highestFilledRow,
+        targetRow: highestFilledRow + 1,
+        isMiddleInsert: false,
+        rawIndexBefore: rawLedgerData.length - 1
+      };
+    }
+
+    let lastRowBefore = 1;
+    let rawIndexBefore = -1;
+
+    for (let i = 0; i < rawLedgerData.length; i++) {
+      const r = rawLedgerData[i];
+      const rNum = r.row || (i + 2);
+      const dStr = (r.date || '').trim();
+      if (!dStr) continue;
+
+      const dObj = parseDateValue(dStr);
+      const t = dObj ? dObj.getTime() : 0;
+      if (t && t <= targetTime) {
+        if (rNum >= lastRowBefore) {
+          lastRowBefore = rNum;
+          rawIndexBefore = i;
+        }
+      }
+    }
+
+    const isMiddleInsert = (lastRowBefore < highestFilledRow);
+    const targetRow = lastRowBefore + 1;
+
+    return {
+      insertAfterRow: lastRowBefore,
+      targetRow: targetRow,
+      isMiddleInsert: isMiddleInsert,
+      rawIndexBefore: rawIndexBefore
+    };
+  }
+
+  function updateTargetRowForDate(dateStr) {
+    if (currentEditMode !== 'new') return;
+    const cfg = SHEETS_CONFIG[currentSheetKey] || SHEETS_CONFIG.sheet1;
+    const res = findInsertionRowForDate(dateStr);
+    const sheetRowInput = document.getElementById('editTxSheetRow');
+    const rowBadge = document.getElementById('editModalRowBadge');
+
+    if (sheetRowInput) sheetRowInput.value = res.targetRow;
+    if (rowBadge) {
+      if (res.isMiddleInsert) {
+        rowBadge.textContent = `${cfg.shortName} • Insert below Row #${res.insertAfterRow} (Row #${res.targetRow})`;
+      } else {
+        rowBadge.textContent = `${cfg.shortName} • Next Blank Row #${res.targetRow}`;
+      }
+    }
+    return res;
+  }
+
   // ==================== AUTOCOMPLETE SUGGESTIONS ENGINE ====================
   function setupAutocomplete(inputId, dropdownId, getItemsFn) {
     const input = document.getElementById(inputId);
@@ -1323,14 +1402,11 @@ function openEditTransactionModal(item, mode = 'edit') {
       if (headerTitle) headerTitle.textContent = '✏️ Edit Transaction';
       if (rowBadge) rowBadge.textContent = `${cfg.shortName} • Sheet Row #${targetRow}`;
     } else {
-      targetRow = getNextBlankDateRow();
       actualRawIdx = '';
       if (headerTitle) headerTitle.textContent = '➕ Add New Transaction';
-      if (rowBadge) rowBadge.textContent = `${cfg.shortName} • Next Blank Row #${targetRow}`;
     }
 
     if (rowIndexInput) rowIndexInput.value = actualRawIdx;
-    if (sheetRowInput) sheetRowInput.value = targetRow;
 
     // 2. Date Setup
     let initialDate = '';
@@ -1343,6 +1419,12 @@ function openEditTransactionModal(item, mode = 'edit') {
     }
     if (dateInput) dateInput.value = initialDate;
     syncDatePickerUI();
+
+    if (mode === 'edit' && item) {
+      if (sheetRowInput) sheetRowInput.value = targetRow;
+    } else {
+      updateTargetRowForDate(initialDate);
+    }
 
     // 3. By (Person) Select
     if (byInput) {
@@ -1456,10 +1538,20 @@ function openEditTransactionModal(item, mode = 'edit') {
 
     const cfg = SHEETS_CONFIG[currentSheetKey] || SHEETS_CONFIG.sheet1;
 
-    // Detect exact target row based on Bank Date criteria
-    const sheetRowVal = (currentEditMode === 'edit' && rowIndexVal !== '') 
-      ? (parseInt(document.getElementById('editTxSheetRow').value, 10) || (parseInt(rowIndexVal, 10) + 2))
-      : getNextBlankDateRow();
+    let sheetRowVal;
+    let isMiddleInsert = false;
+    let insertAfterRow = 1;
+    let rawIndexBefore = -1;
+
+    if (currentEditMode === 'edit' && rowIndexVal !== '') {
+      sheetRowVal = parseInt(document.getElementById('editTxSheetRow').value, 10) || (parseInt(rowIndexVal, 10) + 2);
+    } else {
+      const res = findInsertionRowForDate(dateVal);
+      sheetRowVal = res.targetRow;
+      isMiddleInsert = res.isMiddleInsert;
+      insertAfterRow = res.insertAfterRow;
+      rawIndexBefore = res.rawIndexBefore;
+    }
 
     const recordData = {
       row: sheetRowVal,
@@ -1489,19 +1581,20 @@ function openEditTransactionModal(item, mode = 'edit') {
       if (rawLedgerData[idx]) {
         rawLedgerData[idx] = Object.assign({}, rawLedgerData[idx], recordData);
       }
-    } else {
-      // Find insertion point corresponding to sheetRowVal or append to local array
-      let inserted = false;
-      for (let i = 0; i < rawLedgerData.length; i++) {
-        if ((rawLedgerData[i].row || (i + 2)) === sheetRowVal) {
-          rawLedgerData[i] = recordData;
-          inserted = true;
-          break;
+    } else if (isMiddleInsert) {
+      // In-place chronological insertion below last entry before this date
+      const insertIdx = (rawIndexBefore >= 0) ? (rawIndexBefore + 1) : 0;
+      rawLedgerData.splice(insertIdx, 0, recordData);
+      // Shift subsequent row indices down by 1
+      for (let k = insertIdx + 1; k < rawLedgerData.length; k++) {
+        if (rawLedgerData[k].row) {
+          rawLedgerData[k].row += 1;
+        } else {
+          rawLedgerData[k].row = k + 2;
         }
       }
-      if (!inserted) {
-        rawLedgerData.push(recordData);
-      }
+    } else {
+      rawLedgerData.push(recordData);
     }
 
     // Persist to local cache
@@ -1514,19 +1607,25 @@ function openEditTransactionModal(item, mode = 'edit') {
     processAndRenderAll();
 
     if (modal) modal.classList.add('hidden');
-    showToast(`✓ Row #${sheetRowVal} saved to ${cfg.shortName}`);
+    if (isMiddleInsert) {
+      showToast(`✓ Inserted below Row #${insertAfterRow} (Row #${sheetRowVal}) in ${cfg.shortName}`);
+    } else {
+      showToast(`✓ Row #${sheetRowVal} saved to ${cfg.shortName}`);
+    }
 
-    // If Google Apps Script Web App URL is configured, push directly into sheetRowVal
+    // Direct Google Sheets Write-Back
     const gasUrl = localStorage.getItem('gas_webapp_url') || DEFAULT_GAS_URL;
     if (gasUrl) {
+      const payloadAction = (currentEditMode === 'new' && isMiddleInsert) ? 'insert_transaction' : (currentEditMode === 'new' ? 'add_transaction' : 'edit_transaction');
       fetch(gasUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
-          action: 'edit_transaction',
+          action: payloadAction,
           sheetId: cfg.id,
           sheetName: 'LEDGER',
+          insertAfterRow: insertAfterRow,
           row: sheetRowVal,
           data: recordData
         })
@@ -2510,13 +2609,20 @@ const savedWebhook = localStorage.getItem('gas_webapp_url') || DEFAULT_GAS_URL;
           const d = parseInt(parts[2], 10);
           if (dateInput) {
             dateInput.value = `${d}-${monthNames[mIdx]}-${y}`;
+            updateTargetRowForDate(dateInput.value);
           }
         }
       });
     }
 
     if (dateInput) {
-      dateInput.addEventListener('change', syncDatePickerUI);
+      dateInput.addEventListener('change', () => {
+        syncDatePickerUI();
+        updateTargetRowForDate(dateInput.value);
+      });
+      dateInput.addEventListener('input', () => {
+        updateTargetRowForDate(dateInput.value);
+      });
     }
 
     // Custom Purpose Input Toggle

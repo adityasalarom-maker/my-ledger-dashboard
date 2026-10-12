@@ -2317,12 +2317,13 @@ input:checked + .slider-round:before {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Shift vertical dropdown 20% towards left side for Category and 2-column inputs */
+/* Shift vertical dropdown 20% towards left side for Category and 2-column inputs, and show 2 more values */
 .form-grid-2 .autocomplete-dropdown,
 #editTxCatSuggestions {
   left: -20% !important;
   width: 120% !important;
   min-width: 120% !important;
+  max-height: 310px !important;
 }
 
 .autocomplete-item {
