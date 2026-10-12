@@ -1,0 +1,7 @@
+// ================================================================
+// ASSET: FORMULA-02 - Normalized Month Token Formula
+// TYPE: Sheets Formula | TARGET: LEDGER!M2:M (Column M)
+// NOTES: Extracts standard three-letter temporal partitioning index (Jan, Feb, Mar, etc.) from transaction date in Column A. Used across all summary dashboards, chart aggregators, and pivot slices.
+// ================================================================
+
+=IF(ISBLANK(A2), "", TEXT(A2, "mmm"))

@@ -1,0 +1,27 @@
+// ================================================================
+// ASSET: AI-03 - Controlled Master Taxonomies & Account Vocabularies
+// TYPE: JSON Dictionary | TARGET: Data Validation Rules & Schema Engine
+// NOTES: Official master controlled vocabulary for categories, expense operational accounts (E-Accounts), income institutional asset accounts (I-Accounts), and entity agents. Used across Gemini prompting, Apps Script validation, and dropdown validations.
+// ================================================================
+
+{
+  "categories": [
+    "BUDGET", "Sabji", "Rashan", "misc expn", "Charity", "Food", "Stay", "Fuel",
+    "Personal Care", "Bills", "Recharges", "Housing", "Accessories", "Fruits",
+    "Medical", "Other Houses", "Clothes", "Services \\ Repairs", "Pets",
+    "Insurances \\ PUC", "Savings", "EMI", "Business", "Deposits", "Work", "Gas", "Gifts"
+  ],
+  "expense_accounts": [
+    "Hom Cash", "PNB Online", "Cash Earning E", "Trishaa Cash",
+    "Trishaa Online Sav Acc", "Trishaa Online Current Acc", "Trishaa GPay",
+    "Co bank", "SBI Vil", "PO Bk", "Maa SBI BK", "All"
+  ],
+  "income_accounts": [
+    "CO Bank", "SBI Vil", "Cash Earning I", "Trishaa HDFC Sav Acc",
+    "PNB Bnk", "PO Bk", "Maa SBI BK", "Trishaa Currnt GPay", "All Banks"
+  ],
+  "entities": {
+    "by": ["Honey", "Trishaa", "Maa"],
+    "for": ["Budget", "Staying", "Outer", "Trishaa", "Honey", "Home", "Maa", "Work"]
+  }
+}

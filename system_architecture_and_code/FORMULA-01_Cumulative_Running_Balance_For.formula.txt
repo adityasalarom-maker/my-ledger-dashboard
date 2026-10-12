@@ -1,0 +1,7 @@
+// ================================================================
+// ASSET: FORMULA-01 - Cumulative Running Balance Formula
+// TYPE: Sheets Formula | TARGET: LEDGER!H2:H (Column H)
+// NOTES: Dynamic cumulative balance engine. Adds inflow credit (Column J), deducts outflow expense (Column G), and references previous row balance (H1/previous H). Suppresses calculation on empty rows.
+// ================================================================
+
+=IF(ISBLANK(A2), "", N(H1) + N(J2) - N(G2))

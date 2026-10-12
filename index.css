@@ -1,0 +1,1174 @@
+/*
+ * LEDGER ANALYTICS DASHBOARD - STYLESHEET
+ * High-Fidelity Slate Theme matching Google Sheets "ag LEDGER 2026" & Samsung Galaxy S25 Ultra
+ */
+
+:root {
+  --bg-main: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-subtle: rgba(30, 41, 59, 0.7);
+  --bg-hover: rgba(51, 65, 85, 0.5);
+  --border-color: #334155;
+  --border-subtle: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  
+  --emerald-accent: #10b981;
+  --rose-accent: #f43f5e;
+  --cyan-accent: #06b6d4;
+  --amber-accent: #f59e0b;
+  --indigo-accent: #6366f1;
+  --blue-accent: #3b82f6;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', Consolas, Monaco, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dashboard-wrapper {
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 0.85rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* ========================================================================= */
+/* 1. TOP HORIZONTAL HEADER & FILTER CONTROLS BAR (HORIZONTAL AT TOP)         */
+/* ========================================================================= */
+.top-nav-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-main);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.header-top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.brand-icon {
+  font-size: 1.35rem;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 0.25rem 0.45rem;
+  border-radius: 0.5rem;
+}
+
+.brand-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.brand-subtitle {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.header-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Live Sync Status Indicator */
+.live-sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  padding: 0.3rem 0.65rem;
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: var(--emerald-accent);
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  background-color: var(--emerald-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--emerald-accent);
+  animation: pulseAnim 2s infinite ease-in-out;
+}
+
+@keyframes pulseAnim {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.sync-record-badge {
+  background: rgba(16, 185, 129, 0.25);
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.68rem;
+}
+
+/* Nav Action Buttons */
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-card);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nav-btn:hover {
+  background-color: var(--bg-hover);
+  border-color: #475569;
+}
+
+.sync-btn {
+  background-color: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.sync-btn:hover {
+  background-color: rgba(16, 185, 129, 0.25);
+  border-color: var(--emerald-accent);
+}
+
+.spinning {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* View Mode Switcher (Split, Visuals, Grid) */
+.view-mode-toggle {
+  display: inline-flex;
+  background-color: #0b1120;
+  border-radius: 0.45rem;
+  padding: 2px;
+  border: 1px solid var(--border-color);
+}
+
+.mode-btn {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mode-btn.active {
+  background-color: var(--emerald-accent);
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Row 2: Horizontal Primary Filters Bar (Pinned at top, thumb-friendly) */
+.top-horizontal-filters-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.2rem 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.filter-chip-card {
+  flex: 0 0 auto;
+  min-width: 135px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.search-chip-card {
+  min-width: 220px;
+}
+
+.chip-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.chip-select {
+  width: 100%;
+  background-color: #0b1120;
+  border: 1px solid var(--border-color);
+  color: #ffffff;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.chip-select:focus {
+  border-color: var(--emerald-accent);
+}
+
+.search-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.search-sub-toggle {
+  display: inline-flex;
+  background-color: #0b1120;
+  border-radius: 0.3rem;
+  padding: 1px;
+  border: 1px solid var(--border-color);
+}
+
+.sub-toggle-btn {
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0.1rem 0.35rem;
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  border-radius: 0.2rem;
+  cursor: pointer;
+}
+
+.sub-toggle-btn.active {
+  background-color: var(--emerald-accent);
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-ico {
+  position: absolute;
+  left: 0.45rem;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.chip-input {
+  width: 100%;
+  background-color: #0b1120;
+  border: 1px solid var(--border-color);
+  color: #ffffff;
+  padding: 0.35rem 0.45rem 0.35rem 1.6rem;
+  border-radius: 0.35rem;
+  font-size: 0.78rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.chip-input:focus {
+  border-color: var(--emerald-accent);
+}
+
+.clear-ico-btn {
+  position: absolute;
+  right: 0.35rem;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+/* ========================================================================= */
+/* 2. MAIN WORKSPACE: LEFT VERTICAL VISUALS VS RIGHT DATA GRID                */
+/* ========================================================================= */
+.dashboard-split-workspace {
+  display: grid;
+  grid-template-columns: 375px 1fr;
+  gap: 1.15rem;
+  align-items: start;
+}
+
+/* ========================================================================= */
+/* 2.1 LEFT COLUMN: ALL VISUAL INFOGRAPHICS (STACKED VERTICALLY)             */
+/* ========================================================================= */
+.left-visuals-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* 4 KPI SUMMARY CARDS STACKED VERTICALLY ON LEFT */
+.vertical-kpis-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.kpi-box {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0.55rem;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.kpi-box-expense { border-left: 3.5px solid var(--rose-accent); }
+.kpi-box-income { border-left: 3.5px solid var(--emerald-accent); }
+.kpi-box-net { border-left: 3.5px solid var(--cyan-accent); }
+.kpi-box-balance { border-left: 3.5px solid var(--amber-accent); }
+
+.kpi-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.kpi-icon {
+  font-size: 0.9rem;
+}
+
+.kpi-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.kpi-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.kpi-footer {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+}
+
+/* Visual Panel Cards */
+.visual-panel-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0.65rem;
+  padding: 0.85rem 0.95rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.45);
+}
+
+.panel-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.panel-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.panel-badge {
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  background-color: rgba(51, 65, 85, 0.6);
+  color: var(--cyan-accent);
+  border-radius: 0.25rem;
+  text-transform: uppercase;
+}
+
+.matrix-badge {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+/* Donut Chart Visuals */
+.donut-display-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.donut-svg-holder {
+  position: relative;
+  width: 175px;
+  height: 175px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.donut-svg-graphic {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.donut-slice {
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease;
+  transform-origin: 100px 100px;
+}
+
+.donut-slice:hover {
+  opacity: 0.85;
+  transform: scale(1.05);
+}
+
+.donut-center-info {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  text-align: center;
+  padding: 0 0.5rem;
+}
+
+.center-tag {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.center-val {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 0.1rem;
+}
+
+.center-sub {
+  font-size: 0.62rem;
+  color: var(--emerald-accent);
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Donut Legends List */
+.donut-legend-box {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 160px;
+  overflow-y: auto;
+  padding-right: 0.3rem;
+}
+
+.legend-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.45rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.legend-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.legend-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  overflow: hidden;
+}
+
+.legend-color-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-name {
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.legend-item-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+}
+
+.legend-amount {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.legend-pct {
+  color: var(--text-dim);
+  font-size: 0.65rem;
+  min-width: 35px;
+  text-align: right;
+}
+
+/* Matrices Tables (Category & Account) */
+.matrix-table-wrap {
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+.compact-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.compact-matrix-table thead th {
+  background-color: #162032;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.4rem 0.5rem;
+  position: sticky;
+  top: 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.compact-matrix-table tbody tr {
+  border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+  transition: background-color 0.12s ease;
+}
+
+.compact-matrix-table tbody tr:hover {
+  background-color: var(--bg-hover);
+}
+
+.compact-matrix-table td {
+  padding: 0.35rem 0.5rem;
+  color: var(--text-main);
+}
+
+.compact-matrix-table td.text-right {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+/* Monthly Inflow vs Outflow Dual Bars */
+.monthly-bars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.monthly-flow-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.month-label-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.month-name {
+  color: var(--text-muted);
+}
+
+.month-totals {
+  display: flex;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.month-exp { color: var(--rose-accent); }
+.month-inc { color: var(--emerald-accent); }
+
+.bar-track {
+  height: 6px;
+  background-color: #0b1120;
+  border-radius: 9999px;
+  overflow: hidden;
+  display: flex;
+}
+
+.bar-fill-outflow {
+  background-color: var(--rose-accent);
+  height: 100%;
+}
+
+.bar-fill-inflow {
+  background-color: var(--emerald-accent);
+  height: 100%;
+}
+
+/* ========================================================================= */
+/* 2.2 RIGHT COLUMN: LEDGER DATA GRID (ALONGSIDE ON THE RIGHT)                */
+/* ========================================================================= */
+.right-grid-column {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0.65rem;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.grid-top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(15, 23, 42, 0.6);
+  gap: 0.6rem;
+}
+
+.grid-meta-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.grid-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.grid-main-badge {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.filter-crumb-pill {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  background-color: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  color: var(--cyan-accent);
+  border-radius: 9999px;
+}
+
+.grid-subtext {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+.grid-meta-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.record-counter-pill {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  background-color: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: var(--emerald-accent);
+  border-radius: 0.4rem;
+}
+
+.grid-mode-btn {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  background-color: #0b1120;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  border-radius: 0.35rem;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.grid-mode-btn:hover {
+  background-color: var(--bg-hover);
+  color: #ffffff;
+}
+
+/* DEDICATED SCROLLABLE TABLE CONTAINER */
+.sheet-data-grid-scroll-box {
+  height: calc(100vh - 195px);
+  min-height: 600px;
+  overflow-y: auto;
+  overflow-x: auto;
+  position: relative;
+  background-color: #0f172a;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sheet-result-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+  text-align: left;
+}
+
+.sticky-thead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.header-row th {
+  background-color: #1e293b;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.55rem 0.65rem;
+  border-bottom: 2px solid var(--border-color);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.th-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.sort-icon {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.sheet-result-table tbody tr {
+  border-bottom: 1px solid rgba(51, 65, 85, 0.35);
+  transition: background-color 0.12s ease;
+}
+
+.sheet-result-table tbody tr:hover {
+  background-color: rgba(51, 65, 85, 0.4);
+}
+
+.sheet-result-table td {
+  padding: 0.5rem 0.65rem;
+  vertical-align: middle;
+}
+
+/* Column Specific Stylings */
+.cell-date {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.cell-person, .cell-for {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.badge-person {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  background-color: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+  border-radius: 0.25rem;
+}
+
+.badge-for {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  background-color: rgba(147, 51, 234, 0.15);
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  color: #d8b4fe;
+  border-radius: 0.25rem;
+}
+
+.cell-item {
+  font-weight: 600;
+  color: #ffffff;
+  max-width: 220px;
+}
+
+.item-title {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cell-account {
+  font-size: 0.72rem;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+
+.account-pill {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  background-color: rgba(51, 65, 85, 0.6);
+  border-radius: 0.25rem;
+}
+
+.cell-category {
+  white-space: nowrap;
+}
+
+.category-tag {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.cell-expense {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--rose-accent);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cell-notes {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cell-credit {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--emerald-accent);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cell-balance {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Grid Footer */
+.grid-footer-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 0.9rem;
+  border-top: 1px solid var(--border-color);
+  background-color: rgba(15, 23, 42, 0.7);
+  font-size: 0.72rem;
+}
+
+.footer-count {
+  color: var(--text-muted);
+}
+
+.footer-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.load-more-btn, .load-all-btn {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--border-color);
+  background-color: #0b1120;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.load-more-btn:hover, .load-all-btn:hover {
+  background-color: var(--bg-hover);
+  border-color: #475569;
+}
+
+/* Mobile Cards View */
+.mobile-cards-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.65rem;
+}
+
+.record-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0.45rem;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.record-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+}
+
+.card-date {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.record-card-item {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.record-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.2rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid rgba(51, 65, 85, 0.4);
+}
+
+.card-amount-box {
+  display: flex;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+/* Tooltip & Utilities */
+.chart-tooltip {
+  position: fixed;
+  z-index: 100;
+  background-color: rgba(15, 23, 42, 0.95);
+  border: 1px solid #475569;
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.72rem;
+  color: #ffffff;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.1s ease;
+}
+
+.hidden { display: none !important; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.justify-end { justify-content: flex-end; }
+.cursor-pointer { cursor: pointer; }
+
+/* Custom Scrollbars */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #0b1120; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* ========================================================================= */
+/* 3. RESPONSIVE: SAMSUNG GALAXY S25 ULTRA & MOBILE DEVICES                  */
+/* ========================================================================= */
+@media (max-width: 1024px) {
+  .dashboard-wrapper {
+    padding: 0.6rem 0.75rem;
+  }
+
+  /* View Mode Support on Mobile */
+  .dashboard-split-workspace[data-view="split"] {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 0.75rem;
+  }
+
+  .dashboard-split-workspace[data-view="visuals"] .left-visuals-column {
+    display: flex;
+    width: 100%;
+  }
+
+  .dashboard-split-workspace[data-view="visuals"] .right-grid-column {
+    display: none;
+  }
+
+  .dashboard-split-workspace[data-view="grid"] .left-visuals-column {
+    display: none;
+  }
+
+  .dashboard-split-workspace[data-view="grid"] .right-grid-column {
+    display: flex;
+    width: 100%;
+  }
+
+  .sheet-data-grid-scroll-box {
+    max-height: 580px;
+  }
+}
+
+@media (max-width: 640px) {
+  .brand-title {
+    font-size: 1.05rem;
+  }
+
+  .header-top-bar {
+    gap: 0.5rem;
+  }
+
+  .top-horizontal-filters-bar {
+    gap: 0.4rem;
+  }
+
+  .filter-chip-card {
+    min-width: 110px;
+    padding: 0.3rem 0.45rem;
+  }
+
+  .search-chip-card {
+    min-width: 175px;
+  }
+
+  /* Samsung Galaxy S25 Ultra Default Split View */
+  .dashboard-split-workspace[data-view="split"] {
+    grid-template-columns: 190px 1fr;
+    gap: 0.5rem;
+  }
+
+  .sheet-data-grid-scroll-box {
+    max-height: 520px;
+  }
+}
+
+.mobile-link-btn {
+  background-color: rgba(6, 182, 212, 0.15) !important;
+  border-color: rgba(6, 182, 212, 0.45) !important;
+  color: #67e8f9 !important;
+  text-decoration: none !important;
+  font-weight: 700 !important;
+}
+.mobile-link-btn:hover {
+  background-color: rgba(6, 182, 212, 0.25) !important;
+}
+
+/* Chart Back / Undo Buttons */
+.panel-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.chart-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.18rem 0.5rem;
+  border-radius: 0.35rem;
+  background-color: rgba(244, 63, 94, 0.18);
+  border: 1px solid rgba(244, 63, 94, 0.45);
+  color: #fb7185;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.chart-back-btn:hover,
+.chart-back-btn:active {
+  transform: scale(0.95);
+  background-color: rgba(244, 63, 94, 0.32);
+  color: #ffffff;
+}
+
+.chart-back-btn.hidden {
+  display: none !important;
+}

@@ -1,0 +1,34 @@
+// ================================================================
+// ASSET: AI-02 - Ledger Structured JSON Output Schema
+// TYPE: JSON Schema | TARGET: Gemini API generationConfig.responseSchema
+// NOTES: Guarantees 100% deterministic, machine-readable JSON structure matching the LEDGER sheet 12-column layout. Prevents hallucinated conversational filler text, markdown wrappers, and schema drift.
+// ================================================================
+
+{
+  "$schema": "[link removed]",
+  "title": "LedgerTransactionsPayload",
+  "type": "object",
+  "properties": {
+    "transactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "description": "ISO format YYYY-MM-DD" },
+          "by": { "type": "string", "enum": ["Honey", "Trishaa", "Maa"] },
+          "for_entity": { "type": "string", "enum": ["Budget", "Staying", "Outer", "Trishaa", "Honey", "Home", "Maa", "Work"] },
+          "item": { "type": "string", "description": "Line-item purchase description" },
+          "expense_accn": { "type": "string", "description": "Operational spending account" },
+          "category": { "type": "string", "description": "Controlled taxonomy classification" },
+          "amount_xpns": { "type": "number", "description": "Disbursement amount in INR, null or 0 if credit inflow" },
+          "info": { "type": "string", "description": "Weights, rates, unit pricing, vendors, or reconciliation math" },
+          "amt_in_credit": { "type": "number", "description": "Inflow credit amount in INR, null or 0 if expense" },
+          "income_accnt": { "type": "string", "description": "Institutional capital asset source" },
+          "months": { "type": "string", "description": "Three-letter month token: Jan, Feb, Mar, etc." }
+        },
+        "required": ["date", "by", "for_entity", "item", "expense_accn", "category", "amount_xpns", "amt_in_credit", "months"]
+      }
+    }
+  },
+  "required": ["transactions"]
+}
