@@ -1275,11 +1275,15 @@ input:checked + .slider-round:before {
   inset: 0;
   z-index: 60;
   background-color: rgba(0, 0, 0, 0.75);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: flex-end;
   animation: fadeIn 0.2s ease;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .modal-sheet {
@@ -1296,6 +1300,10 @@ input:checked + .slider-round:before {
   max-height: 85vh;
   overflow-y: auto;
   animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 @keyframes slideUp {
@@ -2143,6 +2151,15 @@ input:checked + .slider-round:before {
 }
 
 /* 6. Tactile Long-Press & Sync Spinning */
+.tx-card,
+.donut-tx-card,
+.tx-table tr,
+.touch-pressing {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
 .touch-pressing {
   transform: scale(0.975) !important;
   background-color: rgba(59, 130, 246, 0.14) !important;
@@ -2360,6 +2377,9 @@ input:checked + .slider-round:before {
 #editTransactionModalBackdrop {
   align-items: flex-start !important;
   padding-top: max(6px, env(safe-area-inset-top)) !important;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
+  transform: translateZ(0) !important;
 }
 
 #editTransactionModalSheet {
@@ -2374,6 +2394,10 @@ input:checked + .slider-round:before {
   padding: 0 !important;
   background-color: var(--bg-surface) !important;
   box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.9) !important;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
+  transform: translate3d(0, 0, 0) !important;
+  will-change: transform !important;
 }
 
 #editTransactionModalSheet .sheet-drag-handle {

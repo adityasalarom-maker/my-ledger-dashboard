@@ -362,6 +362,19 @@
     }
   }
 
+  // Global guard against ghost-click on newly rendered modals right after a long-press touch release
+  if (typeof window.__globalLongPressSetup === 'undefined') {
+    window.__globalLongPressSetup = true;
+    window.__lastGlobalLongPressTime = 0;
+    // Capturing phase intercepts and swallows synthetic ghost clicks before reaching any modal input or button
+    document.addEventListener('click', (e) => {
+      if (window.__lastGlobalLongPressTime && (Date.now() - window.__lastGlobalLongPressTime < 500)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+  }
+
   // ==================== TACTILE LONG-TAP & SCROLL-SAFE TAP BINDER ====================
   function bindTouchLongPress(el, onLongPress, onClick) {
     let pressTimer = null;
@@ -369,6 +382,7 @@
     let isLongPress = false;
     let hasMoved = false;
     let touchStartTime = 0;
+    let lastLongPressTriggered = 0;
 
     el.addEventListener('touchstart', (e) => {
       isLongPress = false;
@@ -383,21 +397,23 @@
       pressTimer = setTimeout(() => {
         if (!hasMoved) {
           isLongPress = true;
+          lastLongPressTriggered = Date.now();
+          window.__lastGlobalLongPressTime = Date.now();
           el.classList.remove('touch-pressing');
           if (navigator.vibrate) {
-            try { navigator.vibrate(50); } catch(err) {}
+            try { navigator.vibrate(40); } catch(err) {}
           }
           if (onLongPress) onLongPress(e);
         }
-      }, 500);
+      }, 480);
     }, { passive: true });
 
     el.addEventListener('touchmove', (e) => {
       if (!e.touches || !e.touches[0]) return;
       const dx = Math.abs(e.touches[0].clientX - startX);
       const dy = Math.abs(e.touches[0].clientY - startY);
-      // As soon as finger moves > 6px, it is a scroll gesture!
-      if (dx > 6 || dy > 6) {
+      // As soon as finger moves > 8px, it is a scroll gesture!
+      if (dx > 8 || dy > 8) {
         hasMoved = true;
         clearTimeout(pressTimer);
         el.classList.remove('touch-pressing');
@@ -408,14 +424,20 @@
       clearTimeout(pressTimer);
       el.classList.remove('touch-pressing');
 
-      // If finger moved while touching (scrolling) or long press fired, NEVER trigger onClick!
-      if (hasMoved || isLongPress) {
+      // If long press fired, PREVENT DEFAULT to suppress ghost clicks and synthetic mouse events
+      if (isLongPress || (Date.now() - lastLongPressTriggered < 600)) {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      if (hasMoved) {
         return;
       }
 
       const touchDuration = Date.now() - touchStartTime;
-      // Only fire single-tap click if stationary and quick (< 450ms)
-      if (onClick && touchDuration < 450) {
+      // Only fire single-tap click if stationary and quick (< 420ms)
+      if (onClick && touchDuration < 420) {
         onClick(e);
       }
     });
@@ -428,7 +450,7 @@
 
     // Suppress native click event if user was scrolling or did a long press
     el.addEventListener('click', (e) => {
-      if (hasMoved || isLongPress) {
+      if (hasMoved || isLongPress || (Date.now() - lastLongPressTriggered < 700) || (Date.now() - (window.__lastGlobalLongPressTime || 0) < 700)) {
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -439,9 +461,14 @@
       }
     });
 
-    // Right-click support on desktop / mouse
+    // Right-click support on desktop / mouse (safeguarded against duplicate firing on mobile touch)
     el.addEventListener('contextmenu', (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      // If long press already fired via touch, NEVER trigger onLongPress again!
+      if (isLongPress || (Date.now() - lastLongPressTriggered < 800) || (Date.now() - (window.__lastGlobalLongPressTime || 0) < 800)) {
+        return;
+      }
       if (onLongPress) onLongPress(e);
     });
   }
@@ -1391,10 +1418,16 @@
   }
 
 function openEditTransactionModal(item, mode = 'edit') {
+    const modal = document.getElementById('editTransactionModalBackdrop');
+    if (!modal) return;
+
+    // Guard against duplicate re-opening/flicker if already active for this transaction
+    if (!modal.classList.contains('hidden') && currentEditItem === item && currentEditMode === mode) {
+      return;
+    }
+
     currentEditMode = mode;
     currentEditItem = item;
-
-    const modal = document.getElementById('editTransactionModalBackdrop');
     const headerTitle = document.getElementById('editModalHeaderTitle');
     const rowBadge = document.getElementById('editModalRowBadge');
     const cfg = SHEETS_CONFIG[currentSheetKey] || SHEETS_CONFIG.sheet1;
