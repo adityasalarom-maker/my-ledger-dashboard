@@ -710,14 +710,18 @@
           <div class="form-row form-grid-2">
             <div class="form-group">
               <label for="editTxDate" class="form-label">Date</label>
-              <input type="text" id="editTxDate" class="form-input" placeholder="e.g. 1-Jan-2026" required>
+              <div class="date-input-container">
+                <input type="text" id="editTxDate" class="form-input" placeholder="e.g. 4-Jan-2026" required autocomplete="off">
+                <button type="button" id="editTxCalendarBtn" class="calendar-picker-btn" title="Open Calendar" aria-label="Open Calendar">📅</button>
+                <input type="date" id="editTxHiddenDatePicker" class="hidden-native-date-picker" tabindex="-1">
+              </div>
             </div>
             <div class="form-group">
               <label for="editTxBy" class="form-label">By (Person)</label>
               <select id="editTxBy" class="form-select">
                 <option value="Honey">Honey</option>
                 <option value="Trishaa">Trishaa</option>
-                <option value="Other">Other</option>
+                <option value="Maa">Maa</option>
               </select>
             </div>
           </div>
@@ -725,19 +729,38 @@
           <div class="form-row form-grid-2">
             <div class="form-group">
               <label for="editTxFor" class="form-label">For (Purpose)</label>
-              <input type="text" id="editTxFor" class="form-input" placeholder="Home, Budget, etc.">
+              <select id="editTxFor" class="form-select">
+                <option value="Home">Home</option>
+                <option value="Work">Work</option>
+                <option value="Budget">Budget</option>
+                <option value="Honey">Honey</option>
+                <option value="Trishaa">Trishaa</option>
+                <option value="Maa">Maa</option>
+                <option value="Outer">Outer</option>
+                <option value="Staying">Staying</option>
+                <option value="__custom__">✏️ Other / Custom Purpose...</option>
+              </select>
+              <input type="text" id="editTxForCustom" class="form-input hidden" placeholder="Enter custom purpose" style="margin-top: 0.35rem;">
             </div>
             <div class="form-group">
               <label for="editTxCat" class="form-label">Category</label>
-              <input type="text" id="editTxCat" class="form-input" list="catDatalist" placeholder="Select or type category" required>
-              <datalist id="catDatalist"></datalist>
+              <select id="editTxCat" class="form-select">
+                <option value="misc expn">misc expn</option>
+              </select>
+              <input type="text" id="editTxCatCustom" class="form-input hidden" placeholder="Enter custom category" style="margin-top: 0.35rem;">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="editTxItem" class="form-label">Item / Description</label>
-              <input type="text" id="editTxItem" class="form-input" placeholder="Description of expenditure / income" required>
+              <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                <select id="editTxItemSelect" class="form-select">
+                  <option value="">📋 Quick Pick Item (Array / Common)...</option>
+                </select>
+                <input type="text" id="editTxItem" class="form-input" list="itemDatalist" placeholder="Or type custom item description..." required autocomplete="off">
+                <datalist id="itemDatalist"></datalist>
+              </div>
             </div>
           </div>
 
@@ -766,6 +789,12 @@
                   <option value="Trishaa GPay">Trishaa GPay</option>
                   <option value="Cash Earning E">Cash Earning E</option>
                   <option value="Cash Earning I">Cash Earning I</option>
+                  <option value="Trishaa Online Sav Acc">Trishaa Online Sav Acc</option>
+                  <option value="Trishaa Online Current Acc">Trishaa Online Current Acc</option>
+                  <option value="CO Bank">CO Bank</option>
+                  <option value="SBI Vil">SBI Vil</option>
+                  <option value="PO Bk">PO Bk</option>
+                  <option value="Maa SBI BK">Maa SBI BK</option>
                 </select>
               </div>
             </div>
@@ -779,12 +808,41 @@
                 <input type="number" id="editTxAmtIn" class="form-input font-mono" step="any" placeholder="0">
               </div>
               <div class="form-group">
-                <label for="editTxIncAcc" class="form-label">Income Account</label>
+                <label for="editTxIncAcc" class="form-label">Income Source Account</label>
                 <select id="editTxIncAcc" class="form-select">
                   <option value="">None / N/A</option>
                   <option value="Cash Earning I">Cash Earning I</option>
-                  <option value="Cash Earning E">Cash Earning E</option>
+                  <option value="CO Bank">CO Bank</option>
+                  <option value="PNB Bnk">PNB Bnk</option>
+                  <option value="Trishaa Savng GPay">Trishaa Savng GPay</option>
+                  <option value="Trishaa Currnt GPay">Trishaa Currnt GPay</option>
+                  <option value="Trishaa Cash">Trishaa Cash</option>
+                  <option value="Trishaa HDFC Sav Acc">Trishaa HDFC Sav Acc</option>
+                  <option value="Trishaa HDFC Current Acc">Trishaa HDFC Current Acc</option>
+                  <option value="SBI Vil">SBI Vil</option>
+                  <option value="PO Bk">PO Bk</option>
+                  <option value="Maa SBI BK">Maa SBI BK</option>
                   <option value="PNB Online">PNB Online</option>
+                  <option value="Cash Earning E">Cash Earning E</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row" style="margin-top: 0.35rem;">
+              <div class="form-group">
+                <label for="editTxIncDepositAcc" class="form-label">Deposited Into Account</label>
+                <select id="editTxIncDepositAcc" class="form-select">
+                  <option value="Hom Cash">Hom Cash</option>
+                  <option value="PNB Online">PNB Online</option>
+                  <option value="Trishaa Cash">Trishaa Cash</option>
+                  <option value="Trishaa GPay">Trishaa GPay</option>
+                  <option value="Cash Earning E">Cash Earning E</option>
+                  <option value="Cash Earning I">Cash Earning I</option>
+                  <option value="Trishaa Online Sav Acc">Trishaa Online Sav Acc</option>
+                  <option value="Trishaa Online Current Acc">Trishaa Online Current Acc</option>
+                  <option value="CO Bank">CO Bank</option>
+                  <option value="SBI Vil">SBI Vil</option>
+                  <option value="PO Bk">PO Bk</option>
+                  <option value="Maa SBI BK">Maa SBI BK</option>
                 </select>
               </div>
             </div>
@@ -809,10 +867,10 @@
               <div style="display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.45rem;">
                 <label class="form-label" style="font-size: 0.68rem;">Google Apps Script Web App URL:</label>
                 <div style="display: flex; gap: 0.4rem;">
-                  <input type="url" id="gasWebhookInput" class="form-input text-xs font-mono" placeholder="https://script.google.com/macros/s/.../exec">
+                  <input type="url" id="gasWebhookInput" class="form-input text-xs font-mono" placeholder="https://script.google.com/macros/s/.../exec" value="https://script.google.com/macros/s/AKfycbz5Een-L-ggrYaFtoyuRRePZzMXM2jXNih9fFVvbsUUl8389oceEyNUG8JJGlC_RKHpYQ/exec">
                   <button type="button" id="btnSaveWebhookUrl" class="btn-form-save" style="padding: 0.4rem 0.75rem; font-size: 0.75rem; white-space: nowrap;">Save URL</button>
                 </div>
-                <span id="gasWebhookStatusHint" style="font-size: 0.65rem; color: var(--text-muted);">Paste your Google Apps Script Web App URL to enable 1-tap live write-back into your Google Sheet.</span>
+                <span id="gasWebhookStatusHint" style="font-size: 0.65rem; color: #34d399;">🟢 <strong>Connected!</strong> Edits and new entries write directly to your Google Sheet.</span>
               </div>
             </details>
           </div>
