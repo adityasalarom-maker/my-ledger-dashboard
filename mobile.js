@@ -362,32 +362,43 @@
     }
   }
 
-  // ==================== TACTILE LONG-TAP EVENT BINDER ====================
+  // ==================== TACTILE LONG-TAP & SCROLL-SAFE TAP BINDER ====================
   function bindTouchLongPress(el, onLongPress, onClick) {
     let pressTimer = null;
     let startX = 0, startY = 0;
     let isLongPress = false;
+    let hasMoved = false;
+    let touchStartTime = 0;
 
     el.addEventListener('touchstart', (e) => {
       isLongPress = false;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
+      hasMoved = false;
+      touchStartTime = Date.now();
+      if (e.touches && e.touches[0]) {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+      }
       el.classList.add('touch-pressing');
 
       pressTimer = setTimeout(() => {
-        isLongPress = true;
-        el.classList.remove('touch-pressing');
-        if (navigator.vibrate) {
-          try { navigator.vibrate(50); } catch(err) {}
+        if (!hasMoved) {
+          isLongPress = true;
+          el.classList.remove('touch-pressing');
+          if (navigator.vibrate) {
+            try { navigator.vibrate(50); } catch(err) {}
+          }
+          if (onLongPress) onLongPress(e);
         }
-        onLongPress(e);
-      }, 480);
+      }, 500);
     }, { passive: true });
 
     el.addEventListener('touchmove', (e) => {
+      if (!e.touches || !e.touches[0]) return;
       const dx = Math.abs(e.touches[0].clientX - startX);
       const dy = Math.abs(e.touches[0].clientY - startY);
-      if (dx > 12 || dy > 12) {
+      // As soon as finger moves > 6px, it is a scroll gesture!
+      if (dx > 6 || dy > 6) {
+        hasMoved = true;
         clearTimeout(pressTimer);
         el.classList.remove('touch-pressing');
       }
@@ -396,20 +407,42 @@
     el.addEventListener('touchend', (e) => {
       clearTimeout(pressTimer);
       el.classList.remove('touch-pressing');
-      if (!isLongPress && onClick) {
+
+      // If finger moved while touching (scrolling) or long press fired, NEVER trigger onClick!
+      if (hasMoved || isLongPress) {
+        return;
+      }
+
+      const touchDuration = Date.now() - touchStartTime;
+      // Only fire single-tap click if stationary and quick (< 450ms)
+      if (onClick && touchDuration < 450) {
         onClick(e);
       }
     });
 
     el.addEventListener('touchcancel', () => {
+      hasMoved = true;
       clearTimeout(pressTimer);
       el.classList.remove('touch-pressing');
+    });
+
+    // Suppress native click event if user was scrolling or did a long press
+    el.addEventListener('click', (e) => {
+      if (hasMoved || isLongPress) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      // On desktop mouse click without touchstart
+      if (!touchStartTime || (Date.now() - touchStartTime > 600)) {
+        if (onClick) onClick(e);
+      }
     });
 
     // Right-click support on desktop / mouse
     el.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      onLongPress(e);
+      if (onLongPress) onLongPress(e);
     });
   }
 
@@ -1719,7 +1752,7 @@ function openEditTransactionModal(item, mode = 'edit') {
       return;
     }
 
-    // 1. Render Cards
+    // 1. Render Cards (Using data attributes instead of raw onclick to prevent scroll triggers)
     listEl.innerHTML = transactions.map((item, idx) => {
       const isExp = item.amountXpns > 0;
       const isInc = item.amtInCredit > 0;
@@ -1727,7 +1760,7 @@ function openEditTransactionModal(item, mode = 'edit') {
       const amtColor = isExp ? 'text-rose-400' : (isInc ? 'text-emerald-400' : 'text-slate-300');
 
       return `
-        <div class="donut-tx-card" onclick="window.openDetailFromInlineTx(${item.id})">
+        <div class="donut-tx-card" data-tx-id="${item.id}">
           <div class="donut-tx-row-main">
             <div class="donut-tx-main-left">
               <span class="donut-tx-date">${escapeHTML(item.date)}</span>
@@ -1750,13 +1783,26 @@ function openEditTransactionModal(item, mode = 'edit') {
       `;
     }).join('');
 
+    // Attach scroll-safe tap & long-press listeners to inline cards
+    listEl.querySelectorAll('.donut-tx-card').forEach(card => {
+      const id = parseInt(card.getAttribute('data-tx-id'), 10);
+      const item = normalizedData.find(t => t.id === id);
+      if (item) {
+        bindTouchLongPress(
+          card,
+          () => openEditTransactionModal(item, 'edit'),
+          () => openTransactionModal(item)
+        );
+      }
+    });
+
     // 2. Render Dense Table Rows
     if (tableBodyEl) {
       tableBodyEl.innerHTML = transactions.map(item => {
         const isExp = item.amountXpns > 0;
         const isInc = item.amtInCredit > 0;
         return `
-          <tr onclick="window.openDetailFromInlineTx(${item.id})" style="cursor: pointer;">
+          <tr data-tx-id="${item.id}" style="cursor: pointer;">
             <td>${escapeHTML(item.date)}</td>
             <td>${escapeHTML(item.by)}</td>
             <td>${escapeHTML(item.forEntity)}</td>
@@ -1770,6 +1816,19 @@ function openEditTransactionModal(item, mode = 'edit') {
           </tr>
         `;
       }).join('');
+
+      // Attach scroll-safe tap & long-press listeners to table rows
+      tableBodyEl.querySelectorAll('tr').forEach(tr => {
+        const id = parseInt(tr.getAttribute('data-tx-id'), 10);
+        const item = normalizedData.find(t => t.id === id);
+        if (item) {
+          bindTouchLongPress(
+            tr,
+            () => openEditTransactionModal(item, 'edit'),
+            () => openTransactionModal(item)
+          );
+        }
+      });
     }
   }
 
