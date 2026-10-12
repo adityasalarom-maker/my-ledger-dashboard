@@ -2154,6 +2154,42 @@
         saveTransactionFromForm();
       });
     }
+    
+    // Webhook URL Manager for In-Dashboard Direct Google Sheet Write-Back
+    const webhookInput = document.getElementById('gasWebhookInput');
+    const btnSaveWebhook = document.getElementById('btnSaveWebhookUrl');
+    const webhookHint = document.getElementById('gasWebhookStatusHint');
+
+    const savedWebhook = localStorage.getItem('gas_webapp_url') || '';
+    if (webhookInput && savedWebhook) {
+      webhookInput.value = savedWebhook;
+      if (webhookHint) {
+        webhookHint.innerHTML = '🟢 <strong>Connected!</strong> Edits and new entries write directly to your Google Sheet.';
+        webhookHint.style.color = '#34d399';
+      }
+    }
+
+    if (btnSaveWebhook) {
+      btnSaveWebhook.addEventListener('click', () => {
+        const val = (webhookInput.value || '').trim();
+        if (val) {
+          localStorage.setItem('gas_webapp_url', val);
+          if (webhookHint) {
+            webhookHint.innerHTML = '🟢 <strong>Connected!</strong> Edits and new entries write directly to your Google Sheet.';
+            webhookHint.style.color = '#34d399';
+          }
+          showToast('✓ Google Sheets Webhook connected!');
+        } else {
+          localStorage.removeItem('gas_webapp_url');
+          if (webhookHint) {
+            webhookHint.textContent = 'Paste your Google Apps Script Web App URL to enable 1-tap live write-back.';
+            webhookHint.style.color = 'var(--text-muted)';
+          }
+          showToast('Webhook disconnected');
+        }
+      });
+    }
+
     const btnSaveEdit = document.getElementById('btnSaveEditTx');
     if (btnSaveEdit) {
       btnSaveEdit.addEventListener('click', (e) => {
