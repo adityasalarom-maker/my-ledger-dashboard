@@ -35,6 +35,15 @@
           </div>
         </div>
 
+        <!-- Center Quick Add Button (Between Ledger Toggle Tab and Offline / Live Status) -->
+        <button id="headerAddTxBtn" class="header-center-add-btn" aria-label="Add Transaction" title="Quick Add Transaction" type="button">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.8">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Add</span>
+        </button>
+
         <div class="header-actions-wrap">
           <!-- Live Sync Status Pill -->
           <div class="live-pill" id="liveSyncStatusPill" title="Live status with Google Sheets">
@@ -683,14 +692,6 @@
     </div>
 
     <!-- Live Toast Notification -->
-    
-    <!-- Floating Quick Add Button (Bottom Right) -->
-    <button id="fabAddTransaction" class="mobile-fab-btn" aria-label="Add Transaction" title="Quick Add Transaction" type="button">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.6">
-        <line x1="12" y1="5" x2="12" y2="19"></line>
-        <line x1="5" y1="12" x2="19" y2="12"></line>
-      </svg>
-    </button>
 
     <!-- Edit / Add Transaction Sheet Modal (Slide up on long-tap or edit tap) -->
     <div class="modal-backdrop hidden" id="editTransactionModalBackdrop">

@@ -2112,6 +2112,15 @@
       });
     }
 
+    
+    // Center Header Add Button (Between Ledger Toggle and Offline/Live pill)
+    const headerAddBtn = document.getElementById('headerAddTxBtn');
+    if (headerAddBtn) {
+      headerAddBtn.addEventListener('click', () => {
+        openEditTransactionModal(null, 'new');
+      });
+    }
+
     const fabBtn = document.getElementById('fabAddTransaction');
     if (fabBtn) {
       fabBtn.addEventListener('click', () => {
