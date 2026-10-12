@@ -50,17 +50,34 @@
 
   const CANONICAL_PERSONS = ['Honey', 'Trishaa', 'Maa'];
 
+  // SOURCE of expenses (Strict Canonical List - Expense Accounts ONLY)
   const CANONICAL_EXPENSE_ACCOUNTS = [
-    'Hom Cash', 'PNB Online', 'Trishaa Cash', 'Trishaa GPay', 
-    'Cash Earning E', 'Cash Earning I', 'Trishaa Online Sav Acc', 
-    'Trishaa Online Current Acc', 'CO Bank', 'SBI Vil', 'PO Bk', 'Maa SBI BK'
+    'Hom Cash',
+    'Cash Earning E',
+    'PNB Online',
+    'Trishaa Cash',
+    'Trishaa Online Sav Acc',
+    'Trishaa Online Current Acc',
+    'Trishaa GPay',
+    'CO Bank',
+    'SBI Vil',
+    'PO Bk',
+    'Maa SBI BK'
   ];
 
+  // SOURCE of Money (Strict Canonical List - Income Accounts ONLY)
   const CANONICAL_INCOME_ACCOUNTS = [
-    'Cash Earning I', 'CO Bank', 'PNB Bnk', 'Trishaa Savng GPay', 
-    'Trishaa Currnt GPay', 'Trishaa Cash', 'Trishaa HDFC Sav Acc', 
-    'Trishaa HDFC Current Acc', 'SBI Vil', 'PO Bk', 'Maa SBI BK', 
-    'PNB Online', 'Cash Earning E'
+    'CO Bank',
+    'PNB Bnk',
+    'Trishaa Cash',
+    'Trishaa HDFC Sav Acc',
+    'Trishaa HDFC Current Acc',
+    'Trishaa Savng GPay',
+    'Cash Earning I',
+    'SBI Vil',
+    'PO Bk',
+    'Maa SBI BK',
+    'Trishaa Currnt GPay'
   ];
 
   const CANONICAL_ITEMS = [
@@ -1149,7 +1166,119 @@
     }
   }
 
-  function openEditTransactionModal(item, mode = 'edit') {
+// ==================== NEXT BLANK DATE ROW DETECTOR ====================
+  function getNextBlankDateRow() {
+    let lastFilledDateRow = 1;
+
+    for (let i = 0; i < rawLedgerData.length; i++) {
+      const r = rawLedgerData[i];
+      const rNum = r.row || (i + 2);
+      const d = (r.date || '').trim();
+      if (d) {
+        if (rNum > lastFilledDateRow) {
+          lastFilledDateRow = rNum;
+        }
+      }
+    }
+
+    return lastFilledDateRow + 1;
+  }
+
+  // ==================== AUTOCOMPLETE SUGGESTIONS ENGINE ====================
+  function setupAutocomplete(inputId, dropdownId, getItemsFn) {
+    const input = document.getElementById(inputId);
+    const dropdown = document.getElementById(dropdownId);
+    if (!input || !dropdown) return;
+
+    let isInteracting = false;
+
+    function renderSuggestions(query = '') {
+      const allItems = getItemsFn();
+      const q = (query || '').toLowerCase().trim();
+      let matched = [];
+
+      if (!q) {
+        matched = allItems.slice(0, 35);
+      } else {
+        const startsWith = [];
+        const wordStarts = [];
+        const contains = [];
+
+        allItems.forEach(item => {
+          const itemLower = item.toLowerCase();
+          if (itemLower.startsWith(q)) {
+            startsWith.push(item);
+          } else {
+            // Check if any word starts with query
+            const words = itemLower.split(/[\s\/\\\-]+/);
+            if (words.some(w => w.startsWith(q))) {
+              wordStarts.push(item);
+            } else if (itemLower.includes(q)) {
+              contains.push(item);
+            }
+          }
+        });
+        matched = startsWith.concat(wordStarts, contains);
+      }
+
+      if (matched.length === 0) {
+        dropdown.innerHTML = '<div class="autocomplete-empty">No matching suggestions (continue typing custom text)</div>';
+        dropdown.classList.remove('hidden');
+        return;
+      }
+
+      dropdown.innerHTML = matched.slice(0, 35).map(item => {
+        return `<div class="autocomplete-item" data-value="${escapeHTML(item)}">${escapeHTML(item)}</div>`;
+      }).join('');
+      dropdown.classList.remove('hidden');
+    }
+
+    input.addEventListener('focus', () => {
+      renderSuggestions(input.value);
+    });
+
+    input.addEventListener('input', () => {
+      renderSuggestions(input.value);
+    });
+
+    dropdown.addEventListener('mousedown', () => {
+      isInteracting = true;
+    });
+    dropdown.addEventListener('touchstart', () => {
+      isInteracting = true;
+    }, { passive: true });
+
+    dropdown.addEventListener('click', (e) => {
+      const itemEl = e.target.closest('.autocomplete-item');
+      if (itemEl) {
+        const val = itemEl.getAttribute('data-value');
+        if (val !== null) {
+          input.value = val;
+          dropdown.classList.add('hidden');
+          input.dispatchEvent(new Event('change'));
+          input.focus();
+        }
+      }
+      isInteracting = false;
+    });
+
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (!isInteracting) {
+          dropdown.classList.add('hidden');
+        }
+        isInteracting = false;
+      }, 220);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.add('hidden');
+      }
+    });
+  }
+
+function openEditTransactionModal(item, mode = 'edit') {
     currentEditMode = mode;
     currentEditItem = item;
 
@@ -1171,32 +1300,39 @@
     const forInput = document.getElementById('editTxFor');
     const forCustom = document.getElementById('editTxForCustom');
     const catInput = document.getElementById('editTxCat');
-    const catCustom = document.getElementById('editTxCatCustom');
     const itemInput = document.getElementById('editTxItem');
-    const itemSelect = document.getElementById('editTxItemSelect');
-    const itemDatalist = document.getElementById('itemDatalist');
     const amtExpInput = document.getElementById('editTxAmtExp');
     const expAccInput = document.getElementById('editTxExpAcc');
     const amtInInput = document.getElementById('editTxAmtIn');
     const incAccInput = document.getElementById('editTxIncAcc');
-    const incDepositInput = document.getElementById('editTxIncDepositAcc');
     const infoInput = document.getElementById('editTxInfo');
 
-    const actualRow = item ? (item.row || item.rowNumber || ((item.rawIndex !== undefined ? item.rawIndex : 0) + 2)) : (rawLedgerData.length + 2);
-    const actualRawIdx = item ? (item.rawIndex !== undefined ? item.rawIndex : (item.id !== undefined ? item.id : '')) : '';
+    // Hide any open autocomplete dropdowns
+    const catDrop = document.getElementById('editTxCatSuggestions');
+    const itemDrop = document.getElementById('editTxItemSuggestions');
+    if (catDrop) catDrop.classList.add('hidden');
+    if (itemDrop) itemDrop.classList.add('hidden');
+
+    // 1. Calculate Target Sheet Row using Bank Date criteria for new rows
+    let targetRow = 2;
+    let actualRawIdx = '';
 
     if (mode === 'edit' && item) {
-      if (headerTitle) headerTitle.textContent = `✏️ Edit Transaction`;
-      if (rowBadge) rowBadge.textContent = `${cfg.shortName} • Sheet Row #${actualRow}`;
+      targetRow = item.row || item.rowNumber || ((item.rawIndex !== undefined ? item.rawIndex : 0) + 2);
+      actualRawIdx = item.rawIndex !== undefined ? item.rawIndex : (item.id !== undefined ? item.id : '');
+      if (headerTitle) headerTitle.textContent = '✏️ Edit Transaction';
+      if (rowBadge) rowBadge.textContent = `${cfg.shortName} • Sheet Row #${targetRow}`;
     } else {
-      if (headerTitle) headerTitle.textContent = `➕ Add New Transaction`;
-      if (rowBadge) rowBadge.textContent = `${cfg.shortName} • Appending New Row #${actualRow}`;
+      targetRow = getNextBlankDateRow();
+      actualRawIdx = '';
+      if (headerTitle) headerTitle.textContent = '➕ Add New Transaction';
+      if (rowBadge) rowBadge.textContent = `${cfg.shortName} • Next Blank Row #${targetRow}`;
     }
 
     if (rowIndexInput) rowIndexInput.value = actualRawIdx;
-    if (sheetRowInput) sheetRowInput.value = actualRow;
+    if (sheetRowInput) sheetRowInput.value = targetRow;
 
-    // 1. Date Field
+    // 2. Date Setup
     let initialDate = '';
     if (mode === 'edit' && item && item.date) {
       initialDate = item.date;
@@ -1208,7 +1344,7 @@
     if (dateInput) dateInput.value = initialDate;
     syncDatePickerUI();
 
-    // 2. By (Person) Select
+    // 3. By (Person) Select
     if (byInput) {
       const allPersons = new Set(CANONICAL_PERSONS);
       normalizedData.forEach(d => { if (d.by) allPersons.add(d.by); });
@@ -1216,13 +1352,13 @@
       byInput.value = (item && item.by) ? item.by : 'Honey';
     }
 
-    // 3. For (Purpose) Sleek Dropdown
+    // 4. For (Purpose) Sleek Dropdown
     if (forInput) {
       const allPurposes = new Set(CANONICAL_PURPOSES);
       normalizedData.forEach(d => { if (d.forEntity || d.for) allPurposes.add(d.forEntity || d.for); });
       const sortedPurposes = Array.from(allPurposes).sort();
       let html = sortedPurposes.map(p => `<option value="${escapeHTML(p)}">${escapeHTML(p)}</option>`).join('');
-      html += `<option value="__custom__">✏️ Other / Custom Purpose...</option>`;
+      html += '<option value="__custom__">✏️ Other / Custom Purpose...</option>';
       forInput.innerHTML = html;
 
       const targetFor = (item && (item.forEntity || item.for)) ? (item.forEntity || item.for) : 'Home';
@@ -1235,91 +1371,37 @@
       }
     }
 
-    // 4. Category Sleek Dropdown
+    // 5. Category (Single Input with Autocomplete Suggestions Dropdown)
     if (catInput) {
-      const allCats = new Set(CANONICAL_CATEGORIES);
-      normalizedData.forEach(d => { if (d.category || d.cat) allCats.add(d.category || d.cat); });
-      const sortedCats = Array.from(allCats).sort();
-      let html = sortedCats.map(c => `<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
-      html += `<option value="__custom__">✏️ Other / Custom Category...</option>`;
-      catInput.innerHTML = html;
-
-      const targetCat = (item && (item.category || item.cat)) ? (item.category || item.cat) : 'misc expn';
-      if (allCats.has(targetCat)) {
-        catInput.value = targetCat;
-        if (catCustom) { catCustom.classList.add('hidden'); catCustom.value = ''; }
-      } else {
-        catInput.value = '__custom__';
-        if (catCustom) { catCustom.classList.remove('hidden'); catCustom.value = targetCat; }
-      }
+      catInput.value = (item && (item.category || item.cat)) ? (item.category || item.cat) : '';
     }
 
-    // 5. Item / Description Quick Pick & Datalist
-    const allItems = new Set(CANONICAL_ITEMS);
-    normalizedData.forEach(d => { if (d.item) allItems.add(d.item); });
-    const sortedItems = Array.from(allItems).sort();
-
-    if (itemSelect) {
-      let selectHtml = `<option value="">📋 Quick Pick Item (Array / Common)...</option>`;
-      sortedItems.forEach(it => {
-        selectHtml += `<option value="${escapeHTML(it)}">${escapeHTML(it)}</option>`;
-      });
-      itemSelect.innerHTML = selectHtml;
+    // 6. Item / Description (Single Input with Autocomplete Suggestions Dropdown)
+    if (itemInput) {
+      itemInput.value = (item && item.item) ? item.item : '';
     }
 
-    if (itemDatalist) {
-      itemDatalist.innerHTML = sortedItems.map(it => `<option value="${escapeHTML(it)}"></option>`).join('');
-    }
-
-    const currentItemVal = (item && item.item) ? item.item : '';
-    if (itemInput) itemInput.value = currentItemVal;
-    if (itemSelect && allItems.has(currentItemVal)) {
-      itemSelect.value = currentItemVal;
-    } else if (itemSelect) {
-      itemSelect.value = '';
-    }
-
-    // 6. Expense Account Sleek Dropdown
+    // 7. Expense Account (STRICT: SOURCE of expenses only)
     if (expAccInput) {
-      const allExp = new Set(CANONICAL_EXPENSE_ACCOUNTS);
-      normalizedData.forEach(d => { if (d.expenseAcc || d.exp_acc) allExp.add(d.expenseAcc || d.exp_acc); });
-      const sortedExp = Array.from(allExp).sort();
-      expAccInput.innerHTML = sortedExp.map(a => `<option value="${escapeHTML(a)}">${escapeHTML(a)}</option>`).join('');
-      
+      expAccInput.innerHTML = CANONICAL_EXPENSE_ACCOUNTS.map(a => `<option value="${escapeHTML(a)}">${escapeHTML(a)}</option>`).join('');
       const targetExp = (item && (item.expenseAcc || item.exp_acc)) ? (item.expenseAcc || item.exp_acc) : 'Hom Cash';
-      if (!allExp.has(targetExp)) {
+      if (!CANONICAL_EXPENSE_ACCOUNTS.includes(targetExp) && targetExp) {
         expAccInput.innerHTML += `<option value="${escapeHTML(targetExp)}">${escapeHTML(targetExp)}</option>`;
       }
-      expAccInput.value = targetExp;
+      expAccInput.value = targetExp || 'Hom Cash';
     }
 
-    // 7. Income Account Sleek Dropdown (Source of Money) & Deposit Account
+    // 8. Income Account (STRICT: SOURCE of Money only)
     if (incAccInput) {
-      const allInc = new Set(CANONICAL_INCOME_ACCOUNTS);
-      normalizedData.forEach(d => { if (d.incomeAccnt || d.inc_acc) allInc.add(d.incomeAccnt || d.inc_acc); });
-      const sortedInc = Array.from(allInc).sort();
-      let incHtml = `<option value="">None / N/A</option>`;
-      sortedInc.forEach(a => {
-        incHtml += `<option value="${escapeHTML(a)}">${escapeHTML(a)}</option>`;
-      });
-      incAccInput.innerHTML = incHtml;
-
-      const targetInc = (item && (item.incomeAccnt || item.inc_acc)) ? (item.incomeAccnt || item.inc_acc) : '';
-      if (targetInc && !allInc.has(targetInc)) {
+      incAccInput.innerHTML = CANONICAL_INCOME_ACCOUNTS.map(a => `<option value="${escapeHTML(a)}">${escapeHTML(a)}</option>`).join('');
+      const targetInc = (item && (item.incomeAccnt || item.inc_acc)) ? (item.incomeAccnt || item.inc_acc) : 'Cash Earning I';
+      if (!CANONICAL_INCOME_ACCOUNTS.includes(targetInc) && targetInc) {
         incAccInput.innerHTML += `<option value="${escapeHTML(targetInc)}">${escapeHTML(targetInc)}</option>`;
       }
-      incAccInput.value = targetInc;
+      incAccInput.value = targetInc || 'Cash Earning I';
     }
 
-    if (incDepositInput) {
-      const allExp = new Set(CANONICAL_EXPENSE_ACCOUNTS);
-      normalizedData.forEach(d => { if (d.expenseAcc || d.exp_acc) allExp.add(d.expenseAcc || d.exp_acc); });
-      const sortedExp = Array.from(allExp).sort();
-      incDepositInput.innerHTML = sortedExp.map(a => `<option value="${escapeHTML(a)}">${escapeHTML(a)}</option>`).join('');
-      incDepositInput.value = (item && (item.expenseAcc || item.exp_acc)) ? (item.expenseAcc || item.exp_acc) : 'Hom Cash';
-    }
-
-    // 8. Amounts & Info Notes
+    // 9. Amounts & Remarks
     if (amtExpInput) amtExpInput.value = (item && item.amountXpns > 0) ? item.amountXpns : '';
     if (amtInInput) amtInInput.value = (item && item.amtInCredit > 0) ? item.amtInCredit : '';
     if (infoInput) infoInput.value = (item && item.info) ? item.info : '';
@@ -1352,7 +1434,6 @@
   function saveTransactionFromForm() {
     const modal = document.getElementById('editTransactionModalBackdrop');
     const rowIndexVal = document.getElementById('editTxRowIndex').value;
-    const sheetRowVal = parseInt(document.getElementById('editTxSheetRow').value, 10) || (rawLedgerData.length + 2);
     const dateVal = (document.getElementById('editTxDate').value || '').trim();
     const byVal = (document.getElementById('editTxBy').value || 'Honey').trim();
 
@@ -1360,16 +1441,12 @@
     const forCustomVal = document.getElementById('editTxForCustom') ? (document.getElementById('editTxForCustom').value || '').trim() : '';
     const forVal = forSelectVal === '__custom__' ? (forCustomVal || 'Home') : forSelectVal;
 
-    const catSelectVal = document.getElementById('editTxCat') ? document.getElementById('editTxCat').value : 'misc expn';
-    const catCustomVal = document.getElementById('editTxCatCustom') ? (document.getElementById('editTxCatCustom').value || '').trim() : '';
-    const catVal = catSelectVal === '__custom__' ? (catCustomVal || 'misc expn') : catSelectVal;
-
+    const catVal = (document.getElementById('editTxCat').value || '').trim() || 'misc expn';
     const itemVal = (document.getElementById('editTxItem').value || '').trim();
     const amtExpVal = parseFloat(document.getElementById('editTxAmtExp').value) || 0;
     const expAccVal = (document.getElementById('editTxExpAcc').value || 'Hom Cash').trim();
     const amtInVal = parseFloat(document.getElementById('editTxAmtIn').value) || 0;
-    const incAccVal = (document.getElementById('editTxIncAcc').value || '').trim();
-    const incDepositVal = document.getElementById('editTxIncDepositAcc') ? document.getElementById('editTxIncDepositAcc').value.trim() : expAccVal;
+    const incAccVal = (document.getElementById('editTxIncAcc').value || 'Cash Earning I').trim();
     const infoVal = (document.getElementById('editTxInfo').value || '').trim();
 
     if (!itemVal && amtExpVal === 0 && amtInVal === 0) {
@@ -1378,7 +1455,11 @@
     }
 
     const cfg = SHEETS_CONFIG[currentSheetKey] || SHEETS_CONFIG.sheet1;
-    const effectiveExpAcc = (amtInVal > 0 && amtExpVal === 0) ? (incDepositVal || expAccVal) : expAccVal;
+
+    // Detect exact target row based on Bank Date criteria
+    const sheetRowVal = (currentEditMode === 'edit' && rowIndexVal !== '') 
+      ? (parseInt(document.getElementById('editTxSheetRow').value, 10) || (parseInt(rowIndexVal, 10) + 2))
+      : getNextBlankDateRow();
 
     const recordData = {
       row: sheetRowVal,
@@ -1387,8 +1468,8 @@
       for: forVal,
       forEntity: forVal,
       item: itemVal,
-      exp_acc: effectiveExpAcc,
-      expenseAcc: effectiveExpAcc,
+      exp_acc: expAccVal,
+      expenseAcc: expAccVal,
       cat: catVal,
       category: catVal,
       amt_exp: amtExpVal,
@@ -1409,8 +1490,18 @@
         rawLedgerData[idx] = Object.assign({}, rawLedgerData[idx], recordData);
       }
     } else {
-      // Append new record
-      rawLedgerData.push(recordData);
+      // Find insertion point corresponding to sheetRowVal or append to local array
+      let inserted = false;
+      for (let i = 0; i < rawLedgerData.length; i++) {
+        if ((rawLedgerData[i].row || (i + 2)) === sheetRowVal) {
+          rawLedgerData[i] = recordData;
+          inserted = true;
+          break;
+        }
+      }
+      if (!inserted) {
+        rawLedgerData.push(recordData);
+      }
     }
 
     // Persist to local cache
@@ -1425,7 +1516,7 @@
     if (modal) modal.classList.add('hidden');
     showToast(`✓ Row #${sheetRowVal} saved to ${cfg.shortName}`);
 
-    // If Google Apps Script Web App URL is configured, push to Google Sheet live
+    // If Google Apps Script Web App URL is configured, push directly into sheetRowVal
     const gasUrl = localStorage.getItem('gas_webapp_url') || DEFAULT_GAS_URL;
     if (gasUrl) {
       fetch(gasUrl, {
@@ -1433,7 +1524,7 @@
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
-          action: currentEditMode === 'edit' ? 'edit_transaction' : 'add_transaction',
+          action: 'edit_transaction',
           sheetId: cfg.id,
           sheetName: 'LEDGER',
           row: sheetRowVal,
@@ -1447,7 +1538,7 @@
     }
   }
 
-  // Transaction Detail Modal
+    // Transaction Detail Modal
   function openTransactionModal(t) {
     activeDetailTx = t;
     const modal = document.getElementById('transactionModalBackdrop');
@@ -2428,20 +2519,6 @@ const savedWebhook = localStorage.getItem('gas_webapp_url') || DEFAULT_GAS_URL;
       dateInput.addEventListener('change', syncDatePickerUI);
     }
 
-    // Custom Category Input Toggle
-    const catSelect = document.getElementById('editTxCat');
-    const catCustom = document.getElementById('editTxCatCustom');
-    if (catSelect && catCustom) {
-      catSelect.addEventListener('change', () => {
-        if (catSelect.value === '__custom__') {
-          catCustom.classList.remove('hidden');
-          catCustom.focus();
-        } else {
-          catCustom.classList.add('hidden');
-        }
-      });
-    }
-
     // Custom Purpose Input Toggle
     const forSelect = document.getElementById('editTxFor');
     const forCustom = document.getElementById('editTxForCustom');
@@ -2456,25 +2533,18 @@ const savedWebhook = localStorage.getItem('gas_webapp_url') || DEFAULT_GAS_URL;
       });
     }
 
-    // Quick Pick Item / Description Select
-    const itemSelect = document.getElementById('editTxItemSelect');
-    const itemInput = document.getElementById('editTxItem');
-    if (itemSelect && itemInput) {
-      itemSelect.addEventListener('change', () => {
-        if (itemSelect.value) {
-          itemInput.value = itemSelect.value;
-        }
-      });
-    }
+    // Setup Live Autocomplete Suggestions for Category and Item
+    setupAutocomplete('editTxCat', 'editTxCatSuggestions', () => {
+      const allCats = new Set(CANONICAL_CATEGORIES);
+      normalizedData.forEach(d => { if (d.category) allCats.add(d.category); });
+      return Array.from(allCats).sort();
+    });
 
-    // Income Deposit Account Sync with Expense Acc
-    const incDepositSelect = document.getElementById('editTxIncDepositAcc');
-    const expAccSelect = document.getElementById('editTxExpAcc');
-    if (incDepositSelect && expAccSelect) {
-      incDepositSelect.addEventListener('change', () => {
-        expAccSelect.value = incDepositSelect.value;
-      });
-    }
+    setupAutocomplete('editTxItem', 'editTxItemSuggestions', () => {
+      const allItems = new Set(CANONICAL_ITEMS);
+      normalizedData.forEach(d => { if (d.item) allItems.add(d.item); });
+      return Array.from(allItems).sort();
+    });
 
     const btnSaveEdit = document.getElementById('btnSaveEditTx');
     if (btnSaveEdit) {
