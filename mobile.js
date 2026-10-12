@@ -2334,10 +2334,6 @@ function openEditTransactionModal(item, mode = 'edit') {
           else clearSearch.classList.add('hidden');
         }
         state.visibleLimit = 50;
-        // Auto-switch to Ledger tab when searching so transaction cards are immediately visible!
-        if (state.searchKeyword.trim() && state.currentTab !== 'tabViewLedger') {
-          switchToTab('tabViewLedger');
-        }
         updateAllViews();
       });
     }
