@@ -79,3 +79,38 @@ Or:
 ### On Desktop:
 👉 **`http://localhost:8080/mobile.html`**  
 👉 **`http://localhost:8080/index.html`**
+
+
+---
+
+## 5. VERSION 2.0: DUAL-SHEET SUPPORT, IN-PLACE EDITING, & GITHUB PAGES CLOUD DEPLOYMENT
+
+### A. Dual Google Sheets Architecture
+- **Sheet 1 (`ag LEDGER 2026`):**
+  - ID: `1qVzr4XNstdYC7aqjLw_ueghBhrKJmIZkPKHeAp4UH-4`
+  - URL: `https://docs.google.com/spreadsheets/d/1qVzr4XNstdYC7aqjLw_ueghBhrKJmIZkPKHeAp4UH-4/edit`
+  - Total rows: 868 • Total Outflow: ₹6,90,229 • Total Inflow: ₹6,22,918
+- **Sheet 2 (`w LEDGER 2026 n`):**
+  - ID: `1uocVkm6qYpuM6zxhv2Hs8tHM-OthlTSOdxBZiRDWziE`
+  - URL: `https://docs.google.com/spreadsheets/d/1uocVkm6qYpuM6zxhv2Hs8tHM-OthlTSOdxBZiRDWziE/edit`
+  - Total rows: 868 • Total Outflow: ₹6,90,229 • Total Inflow: ₹6,23,918 (+₹1,000 variance verified)
+- **Multi-Tab Independence:**
+  - Tab 1 in mobile browser: `https://<username>.github.io/<repo>/?sheet=1` (or `?sheet=ag`)
+  - Tab 2 in mobile browser: `https://<username>.github.io/<repo>/?sheet=2` (or `?sheet=w`)
+  - Interactive header dropdown (`#mobileSheetSelector`) switches between sheets instantly without page reload.
+
+### B. Direct Client-Side Google Sheets CSV Sync (Zero Server Needed on GitHub Pages)
+- Google's CSV export endpoint (`https://docs.google.com/spreadsheets/d/{ID}/export?format=csv`) returns `Access-Control-Allow-Origin: *`.
+- Browser JavaScript directly fetches live data on GitHub Pages with zero server dependencies. The user's laptop does NOT need to be powered on.
+- Automatic fallback chain: Live Google Sheets direct fetch → `localStorage` offline cache → bundled `ledger-data.js`.
+
+### C. In-Place Transaction Editing & Quick Entry
+1. **Long-Tap Gesture (450ms):**
+   - Holding down on any transaction card or table row triggers tactile haptic vibration (`navigator.vibrate(50)`) and visual scale animation.
+   - Slides up the **Edit Transaction Bottom Sheet** pre-populated with row details.
+2. **Transaction Details Sheet Edit Button:**
+   - Single-tap still opens Transaction Details, now featuring a direct `[ ✏️ Edit Transaction ]` action button.
+3. **Floating Action Button (`+` FAB):**
+   - Emerald floating action button above the bottom navigation bar enables instant 1-tap quick transaction logging on the go.
+4. **Google Apps Script Webhook:**
+   - `google_apps_script_editor_sync.gs` handles incoming `doPost` requests from the mobile dashboard to write changes directly into the Google Sheet tab in under 1 second.
