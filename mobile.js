@@ -2546,6 +2546,17 @@ const savedWebhook = localStorage.getItem('gas_webapp_url') || DEFAULT_GAS_URL;
       return Array.from(allItems).sort();
     });
 
+    // Auto-scroll input into center view above mobile keyboard
+    if (editForm) {
+      editForm.querySelectorAll('input, select').forEach(inp => {
+        inp.addEventListener('focus', () => {
+          setTimeout(() => {
+            inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 220);
+        });
+      });
+    }
+
     const btnSaveEdit = document.getElementById('btnSaveEditTx');
     if (btnSaveEdit) {
       btnSaveEdit.addEventListener('click', (e) => {

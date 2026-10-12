@@ -2306,15 +2306,23 @@ input:checked + .slider-round:before {
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  max-height: 185px;
+  max-height: 220px;
   overflow-y: auto;
-  background: #0b1329;
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  border-radius: 0.55rem;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.85);
-  z-index: 1000;
-  padding: 0.25rem 0;
+  background: #0d1527;
+  border: 1.5px solid rgba(59, 130, 246, 0.65);
+  border-radius: 0.65rem;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.95);
+  z-index: 9999;
+  padding: 0.35rem 0;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Shift vertical dropdown 20% towards left side for Category and 2-column inputs */
+.form-grid-2 .autocomplete-dropdown,
+#editTxCatSuggestions {
+  left: -20% !important;
+  width: 120% !important;
+  min-width: 120% !important;
 }
 
 .autocomplete-item {
@@ -2344,4 +2352,44 @@ input:checked + .slider-round:before {
   color: #94a3b8;
   font-style: italic;
   text-align: center;
+}
+
+
+/* Top-Anchored Full-Height Transaction Modal (Resolves Keyboard Squash & Empty Upper Half) */
+#editTransactionModalBackdrop {
+  align-items: flex-start !important;
+  padding-top: max(6px, env(safe-area-inset-top)) !important;
+}
+
+#editTransactionModalSheet {
+  width: 100% !important;
+  max-width: 480px !important;
+  height: calc(100dvh - 12px) !important;
+  max-height: calc(100dvh - 12px) !important;
+  margin-top: 6px !important;
+  border-radius: 1.25rem 1.25rem 0 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  background-color: var(--bg-surface) !important;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.9) !important;
+}
+
+#editTransactionModalSheet .sheet-drag-handle {
+  margin: 0.5rem auto 0.2rem auto;
+  flex-shrink: 0;
+}
+
+#editTransactionModalSheet .sheet-header {
+  padding: 0.5rem 1.1rem 0.6rem 1.1rem !important;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+#editTransactionModalSheet .edit-sheet-form {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  max-height: none !important;
+  padding: 0.75rem 1.1rem 300px 1.1rem !important; /* 300px bottom clearance for virtual keyboard */
 }
