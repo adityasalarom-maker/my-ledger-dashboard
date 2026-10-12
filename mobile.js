@@ -30,7 +30,12 @@
     if (s === '1' || s === 'ag' || s === 'sheet1' || s.includes('1qvzr4xnstd')) return 'sheet1';
     const id = params.get('id');
     if (id === SHEETS_CONFIG.sheet2.id) return 'sheet2';
-    return 'sheet1';
+    if (id === SHEETS_CONFIG.sheet1.id) return 'sheet1';
+    try {
+      const saved = localStorage.getItem('last_selected_sheet');
+      if (saved && SHEETS_CONFIG[saved]) return saved;
+    } catch(e) {}
+    return 'sheet2';
   }
 
   let currentSheetKey = detectInitialSheet();
@@ -93,7 +98,19 @@
 
 
   // Master In-Memory Dataset
-  let rawLedgerData = Array.isArray(window.LEDGER_DATA) ? window.LEDGER_DATA : [];
+  let rawLedgerData = [];
+  try {
+    const cached = localStorage.getItem('cached_ledger_' + currentSheetKey);
+    if (cached) {
+      const parsedCached = JSON.parse(cached);
+      if (Array.isArray(parsedCached) && parsedCached.length > 0) {
+        rawLedgerData = parsedCached;
+      }
+    }
+  } catch(e) {}
+  if (rawLedgerData.length === 0 && Array.isArray(window.LEDGER_DATA)) {
+    rawLedgerData = window.LEDGER_DATA;
+  }
   let normalizedData = [];
 
   // ==================== 1. MOBILE APP STATE ====================
@@ -2609,6 +2626,7 @@ function openEditTransactionModal(item, mode = 'edit') {
         const newKey = e.target.value;
         if (newKey && SHEETS_CONFIG[newKey]) {
           currentSheetKey = newKey;
+          try { localStorage.setItem('last_selected_sheet', newKey); } catch(e) {}
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.set('sheet', newKey === 'sheet2' ? '2' : '1');
           window.history.replaceState({}, '', newUrl.toString());
