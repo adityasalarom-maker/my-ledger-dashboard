@@ -561,10 +561,64 @@
   }
 
   // ==================== 4. FILTERING & SORTING ENGINE ====================
+  function matchTransactionText(item, query, mode = 'similar') {
+    if (!query) return true;
+
+    const corpus = [
+      item.item || '',
+      item.category || '',
+      item.info || '',
+      item.forEntity || item.for || '',
+      item.by || '',
+      item.expenseAcc || '',
+      item.incomeAccnt || '',
+      item.date || '',
+      item.month || '',
+      item.amountXpns ? String(item.amountXpns) : '',
+      item.amtInCredit ? String(item.amtInCredit) : ''
+    ].join(' ').toLowerCase();
+
+    if (mode === 'exact') {
+      const q = query.trim();
+      return corpus.includes(q) || 
+             (item.item || '').toLowerCase() === q || 
+             (item.category || '').toLowerCase() === q;
+    }
+
+    // Similar Mode: Multi-token search with singular/plural stem resilience
+    const tokens = query.split(/\s+/).filter(Boolean);
+    for (let i = 0; i < tokens.length; i++) {
+      const tok = tokens[i];
+      if (corpus.includes(tok)) continue;
+      // Stem resilience: e.g. "recharges" -> "recharge"
+      if (tok.endsWith('s') && tok.length > 3 && corpus.includes(tok.slice(0, -1))) continue;
+      // Singular to plural stem check: e.g. "recharge" -> "recharges"
+      if (corpus.includes(tok + 's')) continue;
+      return false;
+    }
+    return true;
+  }
+
   function getFilteredAndSortedTransactions() {
+    const hasSearch = Boolean(state.searchKeyword && state.searchKeyword.trim());
+    const query = hasSearch ? state.searchKeyword.toLowerCase().trim() : '';
+
+    // Smart Month expansion: if user searched a keyword, but the currently selected month has 0 matches
+    // while other months have matches, automatically search across All Months so user sees results!
+    let effectiveMonth = state.selectedMonth;
+    if (hasSearch && effectiveMonth !== 'All') {
+      const hasMatchInMonth = normalizedData.some(item => item.month === effectiveMonth && matchTransactionText(item, query, state.searchMode));
+      if (!hasMatchInMonth) {
+        const hasMatchAnywhere = normalizedData.some(item => matchTransactionText(item, query, state.searchMode));
+        if (hasMatchAnywhere) {
+          effectiveMonth = 'All';
+        }
+      }
+    }
+
     let list = normalizedData.filter(item => {
       // Month
-      if (state.selectedMonth !== 'All' && item.month !== state.selectedMonth) return false;
+      if (effectiveMonth !== 'All' && item.month !== effectiveMonth) return false;
       // Category
       if (state.selectedCategory !== 'All' && item.category !== state.selectedCategory) return false;
       // Person (By)
@@ -578,18 +632,9 @@
       // Only Income Results (Cell J8)
       if (state.onlyIncome && item.amtInCredit <= 0) return false;
 
-      // Search Query
-      if (state.searchKeyword) {
-        const query = state.searchKeyword.toLowerCase().trim();
-        const itemText = (item.item || '').toLowerCase();
-        const infoText = (item.info || '').toLowerCase();
-        const catText = (item.category || '').toLowerCase();
-
-        if (state.searchMode === 'exact') {
-          if (itemText !== query && infoText !== query && catText !== query) return false;
-        } else {
-          if (!itemText.includes(query) && !infoText.includes(query) && !catText.includes(query)) return false;
-        }
+      // Search Query (Multi-word tokenized cross-field matching)
+      if (hasSearch) {
+        if (!matchTransactionText(item, query, state.searchMode)) return false;
       }
 
       return true;
@@ -1160,10 +1205,9 @@
             <div class="tx-sub-left">
               <span class="tx-cat-badge font-mono" style="${badgeStyle}">${escapeHTML(item.category)}</span>
               <span class="tx-pill-acc">${escapeHTML(item.incomeAccnt || item.expenseAcc || '-')}</span>
-              <span class="tx-pill-by">${escapeHTML(item.by)}</span>
+              <span class="tx-pill-by">${escapeHTML(item.forEntity || item.for || 'Home')}</span>
             </div>
             <div class="tx-sub-right">
-              ${item.balance !== 0 ? `<span class="tx-balance-num">Bal: ${formatINR(item.balance)}</span>` : ''}
             </div>
           </div>
         </div>
@@ -1806,10 +1850,10 @@ function openEditTransactionModal(item, mode = 'edit') {
             <div class="donut-tx-sub-left">
               <span>${escapeHTML(item.category)}</span>
               <span>${escapeHTML(item.incomeAccnt || item.expenseAcc || '-')}</span>
-              <span>${escapeHTML(item.by)}</span>
+              <span>${escapeHTML(item.forEntity || item.for || 'Home')}</span>
             </div>
             <div class="donut-tx-sub-right">
-              ${item.balance !== 0 ? `<span>Bal: ${formatINR(item.balance)}</span>` : '<span>›</span>'}
+              <span>›</span>
             </div>
           </div>
         </div>
@@ -2290,6 +2334,10 @@ function openEditTransactionModal(item, mode = 'edit') {
           else clearSearch.classList.add('hidden');
         }
         state.visibleLimit = 50;
+        // Auto-switch to Ledger tab when searching so transaction cards are immediately visible!
+        if (state.searchKeyword.trim() && state.currentTab !== 'tabViewLedger') {
+          switchToTab('tabViewLedger');
+        }
         updateAllViews();
       });
     }
