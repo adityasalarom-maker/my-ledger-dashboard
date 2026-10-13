@@ -5,7 +5,24 @@ This registry maintains historical snapshots, commit references, and change logs
 
 ## 🏷️ Release Manifest
 
-### [v1.3.0] - Stable Production (Current)
+### [v1.3.2] - Income by Accounts Charts & Visuals (Current)
+- **Date**: 13-Oct-2026
+- **Status**: Active Production (`main`)
+- **Key Changes**:
+  - **Income by Accounts Donut Chart**: Added directly below Expense by Category with matching layout, visuals, and interactive slice selection.
+  - **Inline Result Grid / List**: Expandable `#incAccDonutTxPanel` with Cards vs Dense Table toggle, sort dropdown, and minimize controls.
+  - **Income Account Matrix Table**: Symmetrical matrix table displaying each income source, total inflow amount, and percentage share.
+  - **Live Search & Word Behavior**: Search terms dynamically filter matching incomes by account in-place across Donut, Legend, and inline cards.
+  - **Undo / Back Button**: Added `↩ Back` trigger (`#btnResetIncomeAccountChart`) to revert income account filter in 1 tap.
+
+### [v1.3.1] - Sheet Persistence & Cache Hardening
+- **Date**: 13-Oct-2026
+- **Status**: Stable Production
+- **Key Changes**:
+  - Added `localStorage` persistence for active sheet choice (`w LEDGER 2026 n` vs `ag LEDGER 2026`).
+  - Pre-cached startup dataset to eliminate cold-start flicker.
+
+### [v1.3.0] - Stable Production
 - **Date**: 13-Oct-2026
 - **Status**: Active Production (`main`)
 - **Key Changes**:

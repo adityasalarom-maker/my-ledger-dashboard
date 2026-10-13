@@ -118,7 +118,11 @@
     currentTab: 'tabViewOverview',
     previousTab: 'tabViewOverview',
     catDonutTxMinimized: false,
+    incAccDonutTxMinimized: false,
     accDonutTxMinimized: false,
+    catInlineDisplayMode: 'cards',
+    incAccInlineDisplayMode: 'cards',
+    accInlineDisplayMode: 'cards',
     selectedMonth: 'All',
     selectedCategory: 'All',
     selectedPerson: 'All',
@@ -152,6 +156,22 @@
   };
 
   const DEFAULT_ACC_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+
+  const INCOME_BANK_COLORS = {
+    'Cash Earning I': '#10b981',
+    'Trishaa Savng GPay': '#8b5cf6',
+    'CO Bank': '#06b6d4',
+    'PNB Bnk': '#3b82f6',
+    'Trishaa Cash': '#f59e0b',
+    'Trishaa HDFC Sav Acc': '#ec4899',
+    'Trishaa HDFC Current Acc': '#6366f1',
+    'SBI Vil': '#eab308',
+    'PO Bk': '#f43f5e',
+    'Maa SBI BK': '#14b8a6',
+    'Trishaa Currnt GPay': '#38bdf8',
+    'All Banks': '#64748b'
+  };
+  const DEFAULT_INC_COLORS = ['#10b981', '#06b6d4', '#8b5cf6', '#3b82f6', '#f59e0b', '#ec4899', '#14b8a6', '#6366f1'];
 
   // Indian Rupee Currency Formatter
   function formatINR(val) {
@@ -964,67 +984,33 @@
     let totalExpense = 0;
     let totalIncome = 0;
     const catMap = {};
-    const accMap = {};
+    const incAccMap = {};
+    const expAccMap = {};
 
     filteredData.forEach(t => {
-      totalExpense += (t.amountXpns || 0);
-      totalIncome += (t.amtInCredit || 0);
-    });
+      const exp = (t.amountXpns || 0);
+      const inc = (t.amtInCredit || 0);
+      totalExpense += exp;
+      totalIncome += inc;
 
-    const isIncomeMode = state.onlyIncome || (totalExpense === 0 && totalIncome > 0);
-    const totalAmount = isIncomeMode ? totalIncome : totalExpense;
+      if (exp > 0) {
+        const c = t.category || 'misc expn';
+        const a = t.expenseAcc || 'Hom Cash';
+        catMap[c] = (catMap[c] || 0) + exp;
+        expAccMap[a] = (expAccMap[a] || 0) + exp;
+      }
 
-    filteredData.forEach(t => {
-      const amt = isIncomeMode ? (t.amtInCredit || 0) : (t.amountXpns || 0);
-      if (amt > 0) {
-        const c = t.category || (isIncomeMode ? 'Income' : 'misc expn');
-        const a = (isIncomeMode ? (t.incomeAccnt || t.expenseAcc) : t.expenseAcc) || 'Hom Cash';
-        catMap[c] = (catMap[c] || 0) + amt;
-        accMap[a] = (accMap[a] || 0) + amt;
+      if (inc > 0) {
+        const incAcc = t.incomeAccnt || t.expenseAcc || 'Cash Earning I';
+        incAccMap[incAcc] = (incAccMap[incAcc] || 0) + inc;
       }
     });
 
-    // Update Titles and Headers dynamically for Income vs Expense mode
-    const catCardTitle = document.getElementById('mobileCatDonutCardTitle');
-    const catCenterType = document.getElementById('mobileCatDonutCenterType');
-    const accCardTitle = document.getElementById('mobileAccDonutCardTitle');
-    const accCenterType = document.getElementById('mobileAccDonutCenterType');
-
-    const catMatrixTitle = document.getElementById('mobileCatMatrixTitle');
-    const catMatrixThAmt = document.getElementById('mobileCatMatrixThAmount');
-    const accMatrixTitle = document.getElementById('mobileAccMatrixTitle');
-    const accMatrixThCol = document.getElementById('mobileAccMatrixThCol');
-    const accMatrixThAmt = document.getElementById('mobileAccMatrixThAmount');
-
-    if (isIncomeMode) {
-      if (catCardTitle) catCardTitle.textContent = 'Income by Category';
-      if (catCenterType) catCenterType.textContent = 'Income';
-      if (accCardTitle) accCardTitle.textContent = 'Income by Bank / Account';
-      if (accCenterType) accCenterType.textContent = 'Bank';
-
-      if (catMatrixTitle) catMatrixTitle.textContent = 'Income Matrix (Category)';
-      if (catMatrixThAmt) catMatrixThAmt.textContent = 'Total Inflow';
-      if (accMatrixTitle) accMatrixTitle.textContent = 'Bank / Income Account Matrix';
-      if (accMatrixThCol) accMatrixThCol.textContent = 'Bank / Account';
-      if (accMatrixThAmt) accMatrixThAmt.textContent = 'Total Inflow';
-    } else {
-      if (catCardTitle) catCardTitle.textContent = 'Expenses by Category';
-      if (catCenterType) catCenterType.textContent = 'Expense';
-      if (accCardTitle) accCardTitle.textContent = 'Expenses by Account';
-      if (accCenterType) accCenterType.textContent = 'Account';
-
-      if (catMatrixTitle) catMatrixTitle.textContent = 'Category Matrix (S10:T)';
-      if (catMatrixThAmt) catMatrixThAmt.textContent = 'Total Expense';
-      if (accMatrixTitle) accMatrixTitle.textContent = 'Expense Account Matrix (U10:V)';
-      if (accMatrixThCol) accMatrixThCol.textContent = 'Account';
-      if (accMatrixThAmt) accMatrixThAmt.textContent = 'Total Expense';
-    }
-
-    // 1. Donut 1: Category
+    // 1. Donut 1: Expenses by Category
     const sortedCats = Object.keys(catMap).map((c, i) => ({
       name: c,
       amount: catMap[c],
-      color: isIncomeMode ? ['#10b981', '#06b6d4', '#8b5cf6', '#3b82f6', '#f59e0b', '#ec4899'][i % 6] : CATEGORY_COLORS[i % CATEGORY_COLORS.length]
+      color: CATEGORY_COLORS[i % CATEGORY_COLORS.length]
     })).sort((a, b) => b.amount - a.amount);
 
     renderMobileDonut(
@@ -1033,27 +1019,48 @@
       'mobileCatDonutLabel',
       'mobileCategoryLegend',
       sortedCats,
-      totalAmount,
+      totalExpense,
       (catName) => {
         window.selectCategoryFilter(catName);
       }
     );
 
-    // 2. Donut 2: Account (Curated Bank Colors for Income Mode)
-    const BANK_COLORS = {
-      'Cash Earning I': '#10b981',
-      'CO Bank': '#06b6d4',
-      'Trishaa Savng GPay': '#8b5cf6',
-      'SBI Vil': '#f59e0b',
-      'PNB Online': '#3b82f6',
-      'Hom Cash': '#ec4899'
-    };
+    const catLabel = document.getElementById('mobileCatDonutLabel');
+    if (catLabel && totalExpense > 0) {
+      catLabel.textContent = state.selectedCategory !== 'All' ? state.selectedCategory : `${sortedCats.length} categories`;
+    }
 
-    let accColorIdx = 0;
-    const sortedAccs = Object.keys(accMap).map(a => ({
+    // 2. Donut 2: Income by Accounts
+    let incColIdx = 0;
+    const sortedIncAccs = Object.keys(incAccMap).map(a => ({
       name: a,
-      amount: accMap[a],
-      color: BANK_COLORS[a] || ACCOUNT_COLORS[a] || DEFAULT_ACC_COLORS[(accColorIdx++) % DEFAULT_ACC_COLORS.length]
+      amount: incAccMap[a],
+      color: INCOME_BANK_COLORS[a] || DEFAULT_INC_COLORS[(incColIdx++) % DEFAULT_INC_COLORS.length]
+    })).sort((a, b) => b.amount - a.amount);
+
+    renderMobileDonut(
+      'mobileIncomeAccountDonutSvg',
+      'mobileIncAccDonutAmount',
+      'mobileIncAccDonutLabel',
+      'mobileIncomeAccountLegend',
+      sortedIncAccs,
+      totalIncome,
+      (accName) => {
+        window.selectIncomeAccountFilter(accName);
+      }
+    );
+
+    const incLabel = document.getElementById('mobileIncAccDonutLabel');
+    if (incLabel && totalIncome > 0) {
+      incLabel.textContent = (state.selectedIncomeAcc !== 'All' && state.selectedIncomeAcc !== 'All Banks') ? state.selectedIncomeAcc : `${sortedIncAccs.length} accounts`;
+    }
+
+    // 3. Donut 3: Expenses by Account
+    let accColorIdx = 0;
+    const sortedExpAccs = Object.keys(expAccMap).map(a => ({
+      name: a,
+      amount: expAccMap[a],
+      color: ACCOUNT_COLORS[a] || DEFAULT_ACC_COLORS[(accColorIdx++) % DEFAULT_ACC_COLORS.length]
     })).sort((a, b) => b.amount - a.amount);
 
     renderMobileDonut(
@@ -1061,28 +1068,29 @@
       'mobileAccDonutAmount',
       'mobileAccDonutLabel',
       'mobileAccountLegend',
-      sortedAccs,
-      totalAmount,
+      sortedExpAccs,
+      totalExpense,
       (accName) => {
-        if (isIncomeMode) {
-          window.selectIncomeAccountFilter(accName);
-        } else {
-          window.selectAccountFilter(accName);
-        }
+        window.selectAccountFilter(accName);
       }
     );
 
-    // 3. Category Matrix Table
+    const accLabel = document.getElementById('mobileAccDonutLabel');
+    if (accLabel && totalExpense > 0) {
+      accLabel.textContent = state.selectedExpenseAcc !== 'All' ? state.selectedExpenseAcc : `${sortedExpAccs.length} accounts`;
+    }
+
+    // 4. Category Matrix Table (S10:T)
     const catBadge = document.getElementById('catMatrixCountBadge');
     if (catBadge) catBadge.textContent = `${sortedCats.length} categories`;
 
     const catTbody = document.getElementById('mobileCategoryMatrixTbody');
     if (catTbody) {
       if (sortedCats.length === 0) {
-        catTbody.innerHTML = `<tr><td colspan="3" class="text-center text-slate-500 py-3">${isIncomeMode ? 'No income items' : 'No expenses'}</td></tr>`;
+        catTbody.innerHTML = `<tr><td colspan="3" class="text-center text-slate-500 py-3">No expenses</td></tr>`;
       } else {
         catTbody.innerHTML = sortedCats.map(c => {
-          const pct = totalAmount > 0 ? ((c.amount / totalAmount) * 100).toFixed(1) : '0.0';
+          const pct = totalExpense > 0 ? ((c.amount / totalExpense) * 100).toFixed(1) : '0.0';
           return `
             <tr style="cursor: pointer" onclick="window.selectCategoryFilter('${escapeHTML(c.name)}')">
               <td><strong>${escapeHTML(c.name)}</strong></td>
@@ -1094,17 +1102,38 @@
       }
     }
 
-    // 4. Account Matrix Table
+    // 5. Income Account Matrix Table
+    const incBadge = document.getElementById('incAccMatrixCountBadge');
+    if (incBadge) incBadge.textContent = `${sortedIncAccs.length} accounts`;
+
+    const incTbody = document.getElementById('mobileIncomeAccountMatrixTbody');
+    if (incTbody) {
+      if (sortedIncAccs.length === 0) {
+        incTbody.innerHTML = `<tr><td colspan="3" class="text-center text-slate-500 py-3">No income accounts</td></tr>`;
+      } else {
+        incTbody.innerHTML = sortedIncAccs.map(a => {
+          const pct = totalIncome > 0 ? ((a.amount / totalIncome) * 100).toFixed(1) : '0.0';
+          return `
+            <tr style="cursor: pointer" onclick="window.selectIncomeAccountFilter('${escapeHTML(a.name)}')">
+              <td><strong>${escapeHTML(a.name)}</strong></td>
+              <td class="text-right font-mono text-emerald-400">${formatINR(a.amount)}</td>
+              <td class="text-right text-slate-400 font-mono">${pct}%</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    // 6. Expense Account Matrix Table (U10:V)
     const accTbody = document.getElementById('mobileAccountMatrixTbody');
     if (accTbody) {
-      if (sortedAccs.length === 0) {
-        accTbody.innerHTML = `<tr><td colspan="3" class="text-center text-slate-500 py-3">${isIncomeMode ? 'No income accounts' : 'No expenses'}</td></tr>`;
+      if (sortedExpAccs.length === 0) {
+        accTbody.innerHTML = `<tr><td colspan="3" class="text-center text-slate-500 py-3">No expenses</td></tr>`;
       } else {
-        accTbody.innerHTML = sortedAccs.map(a => {
-          const pct = totalAmount > 0 ? ((a.amount / totalAmount) * 100).toFixed(1) : '0.0';
-          const clickFn = isIncomeMode ? `window.selectIncomeAccountFilter('${escapeHTML(a.name)}')` : `window.selectAccountFilter('${escapeHTML(a.name)}')`;
+        accTbody.innerHTML = sortedExpAccs.map(a => {
+          const pct = totalExpense > 0 ? ((a.amount / totalExpense) * 100).toFixed(1) : '0.0';
           return `
-            <tr style="cursor: pointer" onclick="${clickFn}">
+            <tr style="cursor: pointer" onclick="window.selectAccountFilter('${escapeHTML(a.name)}')">
               <td><strong>${escapeHTML(a.name)}</strong></td>
               <td class="text-right font-mono">${formatINR(a.amount)}</td>
               <td class="text-right text-slate-400 font-mono">${pct}%</td>
@@ -1942,6 +1971,17 @@ function openEditTransactionModal(item, mode = 'edit') {
     showToast('Category grid minimized');
   };
 
+  window.minimizeIncAccTransactions = function(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    state.incAccDonutTxMinimized = true;
+    const panel = document.getElementById('incAccDonutTxPanel');
+    if (panel) {
+      panel.classList.add('hidden');
+      panel.style.display = 'none';
+    }
+    showToast('Income Account grid minimized');
+  };
+
   window.minimizeAccTransactions = function(e) {
     if (e && e.preventDefault) e.preventDefault();
     state.accDonutTxMinimized = true;
@@ -1997,25 +2037,37 @@ function openEditTransactionModal(item, mode = 'edit') {
       }
     }
 
-    // Update Inline Transaction Grid for Account Donut (Handles Expense & Income Accounts)
+    // Update Inline Transaction Grid for Income by Accounts Donut
+    const incAccTxPanel = document.getElementById('incAccDonutTxPanel');
+    if (incAccTxPanel) {
+      const isFilteredInc = state.selectedIncomeAcc !== 'All' && state.selectedIncomeAcc !== 'All Banks';
+      if (isFilteredInc && !state.incAccDonutTxMinimized) {
+        incAccTxPanel.classList.remove('hidden');
+        incAccTxPanel.style.display = 'flex';
+        const incTxItems = filtered.filter(t => t.amtInCredit > 0 && (t.incomeAccnt === state.selectedIncomeAcc || (!t.incomeAccnt && t.expenseAcc === state.selectedIncomeAcc)));
+        renderDonutInlineTxList('incAccDonutTxPanel', 'incAccDonutTxCountBadge', 'incAccDonutTxTitle', `${state.selectedIncomeAcc} Income`, incTxItems);
+      } else {
+        incAccTxPanel.classList.add('hidden');
+        incAccTxPanel.style.display = 'none';
+      }
+    }
+
+    // Update Inline Transaction Grid for Expense by Account Donut
     const accTxPanel = document.getElementById('accDonutTxPanel');
     if (accTxPanel) {
       const isFilteredExp = state.selectedExpenseAcc !== 'All';
-      const isFilteredInc = state.selectedIncomeAcc !== 'All' && state.selectedIncomeAcc !== 'All Banks';
-
-      if ((isFilteredExp || isFilteredInc) && !state.accDonutTxMinimized) {
+      if (isFilteredExp && !state.accDonutTxMinimized) {
         accTxPanel.classList.remove('hidden');
         accTxPanel.style.display = 'flex';
-        const targetAcc = isFilteredInc ? state.selectedIncomeAcc : state.selectedExpenseAcc;
-        const accTxItems = filtered.filter(t => (t.incomeAccnt === targetAcc || t.expenseAcc === targetAcc));
-        renderDonutInlineTxList('accDonutTxPanel', 'accDonutTxCountBadge', 'accDonutTxTitle', `${targetAcc} Transactions`, accTxItems);
+        const accTxItems = filtered.filter(t => t.amountXpns > 0 && t.expenseAcc === state.selectedExpenseAcc);
+        renderDonutInlineTxList('accDonutTxPanel', 'accDonutTxCountBadge', 'accDonutTxTitle', `${state.selectedExpenseAcc} Expenses`, accTxItems);
       } else {
         accTxPanel.classList.add('hidden');
         accTxPanel.style.display = 'none';
       }
     }
 
-    // Update Chart 1 & Chart 2 Back/Undo Buttons visibility
+    // Update Chart 1, Chart 2, Chart 3 Back/Undo Buttons visibility
     const catResetBtn = document.getElementById('btnResetCategoryChart');
     if (catResetBtn) {
       if (state.selectedCategory !== 'All') {
@@ -2028,14 +2080,26 @@ function openEditTransactionModal(item, mode = 'edit') {
       }
     }
 
+    const incAccResetBtn = document.getElementById('btnResetIncomeAccountChart');
+    if (incAccResetBtn) {
+      const isFilteredInc = state.selectedIncomeAcc !== 'All' && state.selectedIncomeAcc !== 'All Banks';
+      if (isFilteredInc) {
+        incAccResetBtn.classList.remove('hidden');
+        incAccResetBtn.style.display = 'inline-flex';
+        incAccResetBtn.setAttribute('title', `Undo filter: ${state.selectedIncomeAcc}`);
+      } else {
+        incAccResetBtn.classList.add('hidden');
+        incAccResetBtn.style.display = 'none';
+      }
+    }
+
     const accResetBtn = document.getElementById('btnResetAccountChart');
     if (accResetBtn) {
       const isFilteredExp = state.selectedExpenseAcc !== 'All';
-      const isFilteredInc = state.selectedIncomeAcc !== 'All' && state.selectedIncomeAcc !== 'All Banks';
-      if (isFilteredExp || isFilteredInc) {
+      if (isFilteredExp) {
         accResetBtn.classList.remove('hidden');
         accResetBtn.style.display = 'inline-flex';
-        accResetBtn.setAttribute('title', `Undo filter: ${isFilteredInc ? state.selectedIncomeAcc : state.selectedExpenseAcc}`);
+        accResetBtn.setAttribute('title', `Undo filter: ${state.selectedExpenseAcc}`);
       } else {
         accResetBtn.classList.add('hidden');
         accResetBtn.style.display = 'none';
@@ -2190,14 +2254,23 @@ function openEditTransactionModal(item, mode = 'edit') {
     updateAllViews();
   };
 
+  window.resetIncomeAccountChartFilter = function (e) {
+    if (e && e.preventDefault) e.preventDefault();
+    state.selectedIncomeAcc = 'All';
+    state.incAccDonutTxMinimized = false;
+    populateDrawerDropdowns();
+    updateAllViews();
+    showToast('↩ Undid Income Account filter');
+  };
+
   window.selectIncomeAccountFilter = function (acc) {
     if (state.selectedIncomeAcc === acc) {
       state.selectedIncomeAcc = 'All';
-      state.accDonutTxMinimized = false;
+      state.incAccDonutTxMinimized = false;
       showToast('Income Account reset to All');
     } else {
       state.selectedIncomeAcc = acc;
-      state.accDonutTxMinimized = false;
+      state.incAccDonutTxMinimized = false;
       showToast(`Filtered Income Account: ${acc}`);
     }
     populateDrawerDropdowns();
@@ -2524,6 +2597,13 @@ function openEditTransactionModal(item, mode = 'edit') {
       });
     }
 
+    const incAccDonutSort = document.getElementById('incAccDonutSortSelect');
+    if (incAccDonutSort) {
+      incAccDonutSort.addEventListener('change', (e) => {
+        handleSortChange(e.target.value, e.target.options[e.target.selectedIndex].text);
+      });
+    }
+
     const accDonutSort = document.getElementById('accDonutSortSelect');
     if (accDonutSort) {
       accDonutSort.addEventListener('change', (e) => {
@@ -2547,6 +2627,26 @@ function openEditTransactionModal(item, mode = 'edit') {
           catCards.classList.remove('hidden');
           catTable.classList.add('hidden');
           showToast('Category Grid: Cards View');
+        }
+      });
+    }
+
+    // Income Account Donut Grid Display Mode Toggle (Cards vs Table)
+    const btnToggleIncAccMode = document.getElementById('btnToggleIncAccDisplayMode');
+    const incAccCards = document.getElementById('incAccDonutTxList');
+    const incAccTable = document.getElementById('incAccDonutTableWrap');
+    if (btnToggleIncAccMode && incAccCards && incAccTable) {
+      btnToggleIncAccMode.addEventListener('click', () => {
+        if (state.incAccInlineDisplayMode === 'cards') {
+          state.incAccInlineDisplayMode = 'table';
+          incAccCards.classList.add('hidden');
+          incAccTable.classList.remove('hidden');
+          showToast('Income Account Grid: Table View');
+        } else {
+          state.incAccInlineDisplayMode = 'cards';
+          incAccCards.classList.remove('hidden');
+          incAccTable.classList.add('hidden');
+          showToast('Income Account Grid: Cards View');
         }
       });
     }
@@ -2829,6 +2929,7 @@ const savedWebhook = localStorage.getItem('gas_webapp_url') || DEFAULT_GAS_URL;
 
   function resetAllFilters() {
     state.catDonutTxMinimized = false;
+    state.incAccDonutTxMinimized = false;
     state.accDonutTxMinimized = false;
     state.selectedMonth = 'All';
     state.selectedCategory = 'All';

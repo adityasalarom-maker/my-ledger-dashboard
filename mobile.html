@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="mobile.css?v=20261013_v131">
+  <link rel="stylesheet" href="mobile.css?v=20261013_v132">
 </head>
 <body class="mobile-body">
   <div class="mobile-app-shell">
@@ -336,7 +336,94 @@
 
         </div>
 
-        <!-- DONUT CHART 2: EXPENSES BY ACCOUNT -->
+        <!-- DONUT CHART 2: INCOME BY ACCOUNTS -->
+        <div class="section-card">
+          <div class="section-card-header">
+            <div class="title-with-icon">
+              <svg class="text-emerald-400" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <h3 class="section-card-title" id="mobileIncAccDonutCardTitle">Income by Accounts</h3>
+            </div>
+            <div class="panel-badge-group">
+              <button id="btnResetIncomeAccountChart" class="chart-back-btn hidden" onclick="window.resetIncomeAccountChartFilter(event)" title="Go back / Undo Income Account filter" type="button">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a4 4 0 0 1 4 4v3"/></svg>
+                <span>↩ Back</span>
+              </button>
+              <span class="section-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">Income</span>
+            </div>
+          </div>
+
+          <div class="donut-interactive-container">
+            <div class="donut-svg-stage">
+              <svg id="mobileIncomeAccountDonutSvg" viewBox="0 0 200 200" class="donut-svg-el"></svg>
+              <div class="donut-center-readout" id="mobileIncAccDonutCenter">
+                <span class="center-type text-emerald-400" id="mobileIncAccDonutCenterType">Income</span>
+                <span class="center-num font-mono text-emerald-300" id="mobileIncAccDonutAmount">₹0</span>
+                <span class="center-name" id="mobileIncAccDonutLabel">All Accounts</span>
+              </div>
+            </div>
+            <div class="donut-legend-scroll" id="mobileIncomeAccountLegend">
+              <!-- Dynamically rendered -->
+            </div>
+          </div>
+          <!-- Inline Transaction Grid / List for Selected Income Account -->
+          <div class="donut-transactions-panel hidden" id="incAccDonutTxPanel">
+            <div class="donut-tx-header">
+              <div class="donut-tx-title-wrap">
+                <span class="donut-tx-dot" style="background-color: var(--emerald)"></span>
+                <span class="donut-tx-title" id="incAccDonutTxTitle">Income Transactions</span>
+                <span class="donut-tx-badge font-mono" id="incAccDonutTxCountBadge">0</span>
+              </div>
+              <div class="donut-tx-controls-right">
+                <!-- Sort Trigger -->
+                <select id="incAccDonutSortSelect" class="mobile-sort-dropdown donut-sort-dropdown" aria-label="Sort Income Account Transactions">
+                  <option value="date_desc">Date (Newest)</option>
+                  <option value="date_asc">Date (Oldest)</option>
+                  <option value="inc_desc">Income (High → Low)</option>
+                  <option value="item_asc">Description (A → Z)</option>
+                  <option value="cat_asc">Category (A → Z)</option>
+                </select>
+
+                <!-- Table / Cards Toggle -->
+                <button id="btnToggleIncAccDisplayMode" class="display-mode-btn" title="Toggle Cards / Table" type="button">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                </button>
+
+                <!-- Minimize Button -->
+                <button id="btnMinimizeIncAccTx" class="donut-tx-minimize-btn" onclick="window.minimizeIncAccTransactions(event)" title="Minimize grid visuals" type="button">
+                  <span>− Minimize</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 1. Cards View -->
+            <div class="donut-tx-list-scroll" id="incAccDonutTxList">
+              <!-- Dynamically populated transaction cards -->
+            </div>
+
+            <!-- 2. Dense Table View -->
+            <div class="mobile-table-scroll-wrap donut-tx-table-wrap hidden" id="incAccDonutTableWrap">
+              <table class="mobile-dense-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>By</th>
+                    <th>For</th>
+                    <th>Item</th>
+                    <th>Category</th>
+                    <th class="text-right">Income</th>
+                    <th>Account</th>
+                    <th>Notes</th>
+                    <th class="text-right">Balance</th>
+                  </tr>
+                </thead>
+                <tbody id="incAccDonutTableTbody" class="donut-table-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- DONUT CHART 3: EXPENSES BY ACCOUNT -->
         <div class="section-card">
           <div class="section-card-header">
             <div class="title-with-icon">
@@ -348,7 +435,7 @@
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a4 4 0 0 1 4 4v3"/></svg>
                 <span>↩ Back</span>
               </button>
-              <span class="section-badge">Chart 2</span>
+              <span class="section-badge">Chart 3</span>
             </div>
           </div>
 
@@ -442,6 +529,26 @@
                 </tr>
               </thead>
               <tbody id="mobileCategoryMatrixTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- INCOME ACCOUNT MATRIX TABLE -->
+        <div class="section-card">
+          <div class="section-card-header">
+            <h3 class="section-card-title" id="mobileIncAccMatrixTitle">Income Account Matrix</h3>
+            <span class="section-badge font-mono" id="incAccMatrixCountBadge">0 items</span>
+          </div>
+          <div class="matrix-table-scrollbox">
+            <table class="mobile-matrix-table">
+              <thead>
+                <tr>
+                  <th class="text-left" id="mobileIncAccMatrixThCol">Income Account</th>
+                  <th class="text-right" id="mobileIncAccMatrixThAmount">Total Inflow</th>
+                  <th class="text-right">% Share</th>
+                </tr>
+              </thead>
+              <tbody id="mobileIncomeAccountMatrixTbody"></tbody>
             </table>
           </div>
         </div>
@@ -857,8 +964,8 @@
   </div>
 
   <!-- Offline Cache Fallback -->
-  <script src="ledger-data.js?v=20261013_v131"></script>
+  <script src="ledger-data.js?v=20261013_v132"></script>
   <!-- Dedicated Mobile App Logic -->
-  <script src="mobile.js?v=20261013_v131"></script>
+  <script src="mobile.js?v=20261013_v132"></script>
 </body>
 </html>
