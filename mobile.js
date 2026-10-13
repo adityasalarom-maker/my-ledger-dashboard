@@ -7,14 +7,8 @@
 (function () {
   'use strict';
 
-  // ==================== DUAL GOOGLE SHEETS CONFIGURATION ====================
+  // ==================== GOOGLE SHEETS CONFIGURATION ====================
   const SHEETS_CONFIG = {
-    sheet1: {
-      id: '1qVzr4XNstdYC7aqjLw_ueghBhrKJmIZkPKHeAp4UH-4',
-      name: 'ag LEDGER 2026',
-      shortName: 'ag LEDGER 2026',
-      url: 'https://docs.google.com/spreadsheets/d/1qVzr4XNstdYC7aqjLw_ueghBhrKJmIZkPKHeAp4UH-4/edit'
-    },
     sheet2: {
       id: '1uocVkm6qYpuM6zxhv2Hs8tHM-OthlTSOdxBZiRDWziE',
       name: 'w LEDGER 2026 n',
@@ -22,23 +16,14 @@
       url: 'https://docs.google.com/spreadsheets/d/1uocVkm6qYpuM6zxhv2Hs8tHM-OthlTSOdxBZiRDWziE/edit'
     }
   };
+  // Backward compatibility alias: legacy sheet1 maps directly to w LEDGER 2026 n
+  SHEETS_CONFIG.sheet1 = SHEETS_CONFIG.sheet2;
 
   function detectInitialSheet() {
-    const params = new URLSearchParams(window.location.search);
-    const s = (params.get('sheet') || '').toLowerCase();
-    if (s === '2' || s === 'w' || s === 'sheet2' || s.includes('1uocvkm6qypu')) return 'sheet2';
-    if (s === '1' || s === 'ag' || s === 'sheet1' || s.includes('1qvzr4xnstd')) return 'sheet1';
-    const id = params.get('id');
-    if (id === SHEETS_CONFIG.sheet2.id) return 'sheet2';
-    if (id === SHEETS_CONFIG.sheet1.id) return 'sheet1';
-    try {
-      const saved = localStorage.getItem('last_selected_sheet');
-      if (saved && SHEETS_CONFIG[saved]) return saved;
-    } catch(e) {}
     return 'sheet2';
   }
 
-  let currentSheetKey = detectInitialSheet();
+  let currentSheetKey = 'sheet2';
   let activeDetailTx = null;
   // ==================== CANONICAL MASTER TAXONOMIES (ARRAY TAB) ====================
   const CANONICAL_CATEGORIES = [
@@ -386,7 +371,7 @@
         }
       } catch(e) {}
 
-      if (currentSheetKey === 'sheet1' && Array.isArray(window.LEDGER_DATA) && window.LEDGER_DATA.length > 0) {
+      if (Array.isArray(window.LEDGER_DATA) && window.LEDGER_DATA.length > 0) {
         rawLedgerData = window.LEDGER_DATA;
         if (statusLabel) statusLabel.textContent = 'Bundled';
         processAndRenderAll();
@@ -2718,21 +2703,15 @@ function openEditTransactionModal(item, mode = 'edit') {
       });
     }
 
-    // --- Dual Sheet Switcher, FAB, Edit Modal Listeners ---
+    // --- Sheet Selector & Display Listeners ---
     const sheetSelectEl = document.getElementById('mobileSheetSelector');
     if (sheetSelectEl) {
-      sheetSelectEl.value = currentSheetKey;
-      sheetSelectEl.addEventListener('change', (e) => {
-        const newKey = e.target.value;
-        if (newKey && SHEETS_CONFIG[newKey]) {
-          currentSheetKey = newKey;
-          try { localStorage.setItem('last_selected_sheet', newKey); } catch(e) {}
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.set('sheet', newKey === 'sheet2' ? '2' : '1');
-          window.history.replaceState({}, '', newUrl.toString());
-          showToast(`Switching to ${SHEETS_CONFIG[newKey].shortName}...`);
-          syncActiveSheetData(false);
-        }
+      sheetSelectEl.value = 'sheet2';
+      sheetSelectEl.addEventListener('change', () => {
+        currentSheetKey = 'sheet2';
+        sheetSelectEl.value = 'sheet2';
+        try { localStorage.setItem('last_selected_sheet', 'sheet2'); } catch(e) {}
+        syncActiveSheetData(false);
       });
     }
 

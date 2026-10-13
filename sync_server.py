@@ -4,7 +4,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 PORT = 8080
 DIRECTORY = r"c:\Users\adity\.gemini\antigravity-ide\brain\1st"
 BACKUP_DIR = r"C:\Users\adity\.gemini\antigravity-ide\brain\4bb3d908-a620-4258-a984-751fdfb4e9bc\backup"
-SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1qVzr4XNstdYC7aqjLw_ueghBhrKJmIZkPKHeAp4UH-4/gviz/tq?tqx=out:csv&sheet=LEDGER"
+SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1uocVkm6qYpuM6zxhv2Hs8tHM-OthlTSOdxBZiRDWziE/gviz/tq?tqx=out:csv&sheet=LEDGER"
 
 latest_records = []
 last_sync_timestamp = 0
@@ -73,7 +73,7 @@ def fetch_live_ledger():
                     f.write(js_content)
                 with open(os.path.join(BACKUP_DIR, "mobile_dashboard_code", "ledger-data.js"), "w", encoding="utf-8") as f:
                     f.write(js_content)
-                with open(os.path.join(BACKUP_DIR, "transactions_866_ledger.json"), "w", encoding="utf-8") as f:
+                with open(os.path.join(BACKUP_DIR, "transactions_ledger.json"), "w", encoding="utf-8") as f:
                     json.dump(parsed, f, indent=2)
             except Exception as e:
                 print(f"[Sync Error writing cache]: {e}")

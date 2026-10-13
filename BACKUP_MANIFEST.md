@@ -2,7 +2,7 @@
 
 **Version:** 1.4 (New Dedicated Mobile-Friendly Dashboard & Comprehensive Sheet Feature Audit)  
 **Last Updated:** 2026-10-12T03:26:00+05:30  
-**Source Google Spreadsheet:** [ag LEDGER 2026 (Spreadsheet ID: 1qVzr4XNstdYC7aqjLw_ueghBhrKJmIZkPKHeAp4UH-4)](https://docs.google.com/spreadsheets/d/1qVzr4XNstdYC7aqjLw_ueghBhrKJmIZkPKHeAp4UH-4/edit?usp=sharing)  
+**Source Google Spreadsheet:** [w LEDGER 2026 n (Spreadsheet ID: 1uocVkm6qYpuM6zxhv2Hs8tHM-OthlTSOdxBZiRDWziE)](https://docs.google.com/spreadsheets/d/1uocVkm6qYpuM6zxhv2Hs8tHM-OthlTSOdxBZiRDWziE/edit?usp=sharing)  
 **Target Mobile Device:** Samsung Galaxy S25 Ultra (Viewport: 412 × 915 px, Dynamic AMOLED 2X)  
 **Primary Backup Location:** `file:///C:/Users/adity/.gemini/antigravity-ide/brain/4bb3d908-a620-4258-a984-751fdfb4e9bc/backup/`  
 **Active Workspace Location:** `file:///c:/Users/adity/.gemini/antigravity-ide/brain/1st/`

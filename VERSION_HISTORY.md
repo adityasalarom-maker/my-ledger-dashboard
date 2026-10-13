@@ -5,7 +5,18 @@ This registry maintains historical snapshots, commit references, and change logs
 
 ## 🏷️ Release Manifest
 
-### [v1.3.2] - Income by Accounts Charts & Visuals (Current)
+### [v1.4.0] - Exclusive w LEDGER 2026 n Migration & Full Audit (Current)
+- **Date**: 13-Oct-2026
+- **Status**: Active Production (main)
+- **Key Changes**:
+  - **Removed ag LEDGER 2026**: Completely decoupled old g LEDGER 2026 from all configs, scripts, and views.
+  - **Sole Source of Truth**: Standardized 100% on w LEDGER 2026 n (Spreadsheet ID: 1uocVkm6qYpuM6zxhv2Hs8tHM-OthlTSOdxBZiRDWziE).
+  - **Bundled Fallback Synchronized**: ledger-data.js updated to the live 869 rows (ending on 13-Oct-2026 'Ghhee', closing balance ₹28,035).
+  - **Header Refinement**: Replaced the dual-sheet select with a dedicated clean title badge (w LEDGER 2026 n) with backward-compatible DOM mapping.
+  - **Background Daemon Terminated & Updated**: Stopped lingering background sync_server.py and repointed its default URL to w LEDGER 2026 n.
+  - **Comprehensive Audit**: Full mathematical, UI, write-back, and chart verification executed.
+
+### [v1.3.2] - Income by Accounts Charts & Visuals
 - **Date**: 13-Oct-2026
 - **Status**: Active Production (`main`)
 - **Key Changes**:

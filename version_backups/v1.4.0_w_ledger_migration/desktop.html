@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Smart Mobile Device Redirection -->
+  <script>
+    (function() {
+      if (window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        var query = window.location.search || '';
+        window.location.replace('mobile.html' + query);
+      }
+    })();
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Ledger Analytics Dashboard - Google Sheets Live Explorer with Visual Infographics on Left & Data Grid on Right">
+  <title>Ledger Analytics Dashboard | Live Google Sheets Explorer</title>
+  
+  <!-- Modern Typography (Inter & JetBrains Mono) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="index.css">
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans">
+  <div class="dashboard-wrapper">
+    
+    <!-- ========================================================================= -->
+    <!-- 1. TOP HORIZONTAL HEADER & COMPACT FILTER CONTROLS BAR (HORIZONTAL AT TOP) -->
+    <!-- ========================================================================= -->
+    <header class="top-nav-header">
+      <!-- Row 1: Brand & Live Sync Status -->
+      <div class="header-top-bar">
+        <div class="brand-group">
+          <span class="brand-icon">⚡</span>
+          <div>
+            <h1 class="brand-title">LEDGER ANALYTICS DASHBOARD</h1>
+            <p class="brand-subtitle">w LEDGER 2026 n • Live Synced with Google Sheets</p>
+          </div>
+        </div>
+          <a href="mobile.html" class="mobile-switch-link" style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); color:#34d399; padding:0.35rem 0.75rem; border-radius:0.5rem; text-decoration:none; font-size:0.8rem; font-weight:700; margin-left: auto;">
+            📱 Mobile Dashboard (Galaxy S25)
+          </a>
+
+        <div class="header-controls-group">
+          <!-- Live Sync Status Badge -->
+          <div class="live-sync-indicator" id="liveSyncStatusBadge" title="Live status with Google Sheets">
+            <span class="pulse-dot"></span>
+            <span id="syncStatusText">Live Connected</span>
+            <span class="sync-record-badge font-mono" id="syncRecordBadge">866 rows</span>
+          </div>
+
+          <!-- Live Sync Button -->
+          <button id="btnManualSync" class="nav-btn sync-btn" title="Fetch latest edits from Google Sheets">
+            <svg id="syncIconSvg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/></svg>
+            <span id="syncBtnLabel">Sync Live Sheets</span>
+          </button>
+
+          <!-- Reset Filters Button -->
+          <button id="resetAllFiltersBtn" class="nav-btn reset-btn" title="Reset all filters to defaults">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Reset
+          </button>
+
+          <!-- Mobile View Mode Toggle -->
+          <div class="view-mode-toggle" id="viewModeToggleGroup">
+            <button class="mode-btn active" id="btnModeSplit" data-view="split" title="Split Screen (Visuals + Grid)">⊞ Split</button>
+            <button class="mode-btn" id="btnModeVisuals" data-view="visuals" title="Visual Infographics Only">📊 Visuals</button>
+            <button class="mode-btn" id="btnModeGrid" data-view="grid" title="Data Grid Only">📋 Grid</button>
+          </div>
+
+          <!-- Dedicated Mobile App Link -->
+          <a href="mobile.html" class="nav-btn mobile-link-btn" title="Open Dedicated S25 Ultra Mobile App">
+            📱 Mobile App
+          </a>
+        </div>
+      </div>
+
+      <!-- Row 2: Horizontal Primary & Secondary Filters (Horizontal scroll/flex across top) -->
+      <div class="top-horizontal-filters-bar" id="topFiltersBar">
+        
+        <!-- Filter 1: Month -->
+        <div class="filter-chip-card">
+          <span class="chip-label">Month</span>
+          <select id="filterMonthSelect" class="chip-select">
+            <option value="All">All Months</option>
+            <option value="Jan">Jan</option>
+            <option value="Feb">Feb</option>
+            <option value="Mar">Mar</option>
+            <option value="Apr">Apr</option>
+            <option value="May">May</option>
+            <option value="Jun">Jun</option>
+            <option value="Jul">Jul</option>
+            <option value="Aug">Aug</option>
+            <option value="Sep">Sep</option>
+            <option value="Oct">Oct</option>
+            <option value="Nov">Nov</option>
+            <option value="Dec">Dec</option>
+          </select>
+        </div>
+
+        <!-- Filter 2: Category -->
+        <div class="filter-chip-card">
+          <span class="chip-label">Category</span>
+          <select id="filterCategorySelect" class="chip-select">
+            <option value="All">All Categories</option>
+          </select>
+        </div>
+
+        <!-- Filter 3: Person (By) -->
+        <div class="filter-chip-card">
+          <span class="chip-label">By</span>
+          <select id="filterPersonSelect" class="chip-select">
+            <option value="All">All Persons</option>
+          </select>
+        </div>
+
+        <!-- Filter 4: Purpose (For) -->
+        <div class="filter-chip-card">
+          <span class="chip-label">For</span>
+          <select id="filterForSelect" class="chip-select">
+            <option value="All">All Purposes</option>
+          </select>
+        </div>
+
+        <!-- Filter 5: Search Keyword + Mode (Similar / Exact) -->
+        <div class="filter-chip-card search-chip-card">
+          <div class="search-top-row">
+            <span class="chip-label">Search</span>
+            <div class="search-sub-toggle">
+              <button type="button" class="sub-toggle-btn active" id="btnModeSimilar" data-mode="similar">Similar</button>
+              <button type="button" class="sub-toggle-btn" id="btnModeExact" data-mode="exact">Exact</button>
+            </div>
+          </div>
+          <div class="search-input-wrap">
+            <svg class="search-ico" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="searchKeywordInput" placeholder="Item / remarks..." class="chip-input" autocomplete="off">
+            <button id="clearSearchBtn" class="clear-ico-btn hidden" title="Clear">×</button>
+          </div>
+        </div>
+
+        <!-- Filter 6: Expense Account -->
+        <div class="filter-chip-card">
+          <span class="chip-label">Exp Account</span>
+          <select id="filterExpenseAccSelect" class="chip-select">
+            <option value="All">All Accounts</option>
+          </select>
+        </div>
+
+        <!-- Filter 7: Income Account -->
+        <div class="filter-chip-card">
+          <span class="chip-label">Inc Account</span>
+          <select id="filterIncomeAccSelect" class="chip-select">
+            <option value="All">All Banks</option>
+          </select>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- ========================================================================= -->
+    <!-- 2. MAIN WORKSPACE: LEFT VERTICAL VISUALS VS RIGHT DATA GRID               -->
+    <!-- ========================================================================= -->
+    <main class="dashboard-split-workspace" id="dashboardWorkspace">
+      
+      <!-- ======================================================================= -->
+      <!-- LEFT SECTION: ALL VISUAL INFOGRAPHICS STACKED VERTICALLY                -->
+      <!-- ======================================================================= -->
+      <aside class="left-visuals-column" id="leftVisualsColumn">
+        
+        <!-- 2.1 KPI SUMMARY CARDS (STACKED VERTICALLY ON LEFT) -->
+        <div class="vertical-kpis-stack" id="kpisStackContainer">
+          
+          <!-- KPI 1: FILTERED Total EXPENSE (Rose) -->
+          <div class="kpi-box kpi-box-expense">
+            <div class="kpi-header">
+              <span class="kpi-icon text-rose-400">📉</span>
+              <span class="kpi-title">FILTERED TOTAL EXPENSE</span>
+            </div>
+            <div class="kpi-value text-rose-400 font-mono" id="valTotalExpense">₹0</div>
+            <div class="kpi-footer">Operational debits (Filtered)</div>
+          </div>
+
+          <!-- KPI 2: FILTERED Total CREDIT / INCOME (Emerald) -->
+          <div class="kpi-box kpi-box-income">
+            <div class="kpi-header">
+              <span class="kpi-icon text-emerald-400">📈</span>
+              <span class="kpi-title">FILTERED TOTAL INCOME</span>
+            </div>
+            <div class="kpi-value text-emerald-400 font-mono" id="valTotalIncome">₹0</div>
+            <div class="kpi-footer">Budget & incoming credits</div>
+          </div>
+
+          <!-- KPI 3: FILTERED NET BALANCE (Cyan) -->
+          <div class="kpi-box kpi-box-net">
+            <div class="kpi-header">
+              <span class="kpi-icon text-cyan-400">⚖️</span>
+              <span class="kpi-title">FILTERED NET BALANCE</span>
+            </div>
+            <div class="kpi-value text-cyan-300 font-mono" id="valNetBalance">₹0</div>
+            <div class="kpi-footer">Credit minus Expense</div>
+          </div>
+
+          <!-- KPI 4: CLOSING BALANCE (Amber / Slate) -->
+          <div class="kpi-box kpi-box-balance">
+            <div class="kpi-header">
+              <span class="kpi-icon text-amber-400">🏦</span>
+              <span class="kpi-title">CLOSING BALANCE</span>
+            </div>
+            <div class="kpi-value text-slate-200 font-mono" id="valClosingBalance">₹0</div>
+            <div class="kpi-footer">Cumulative running balance</div>
+          </div>
+
+        </div>
+
+        <!-- 2.2 DONUT CHART 1: FILTERED EXPENSES BY CATEGORY -->
+        <section class="visual-panel-card" id="cardCategoryDonut">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <svg class="panel-icon text-emerald-400" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+              <h2 class="panel-title">Filtered Expenses by Category</h2>
+            </div>
+            <div class="panel-badge-group">
+              <button id="btnResetCategoryChartDesktop" class="chart-back-btn hidden" title="Go back / Undo Category filter">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a4 4 0 0 1 4 4v3"/></svg>
+                <span>Back</span>
+              </button>
+              <span class="panel-badge">Chart 1</span>
+            </div>
+          </div>
+
+          <div class="donut-display-area">
+            <div class="donut-svg-holder" id="categoryDonutWrapper">
+              <svg id="categoryDonutSvg" viewBox="0 0 200 200" class="donut-svg-graphic"></svg>
+              <div class="donut-center-info" id="categoryDonutCenter">
+                <span class="center-tag">Expense</span>
+                <span class="center-val font-mono" id="categoryDonutCenterAmount">₹0</span>
+                <span class="center-sub" id="categoryDonutCenterSub">All Categories</span>
+              </div>
+            </div>
+            <!-- Legend List -->
+            <div class="donut-legend-box" id="categoryLegendList"></div>
+          </div>
+        </section>
+
+        <!-- 2.3 DONUT CHART 2: FILTERED EXPENSES BY ACCOUNT -->
+        <section class="visual-panel-card" id="cardAccountDonut">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <svg class="panel-icon text-cyan-400" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="6" y1="12" x2="10" y2="12"></line></svg>
+              <h2 class="panel-title">Filtered Expenses by Account</h2>
+            </div>
+            <div class="panel-badge-group">
+              <button id="btnResetAccountChartDesktop" class="chart-back-btn hidden" title="Go back / Undo Account filter">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a4 4 0 0 1 4 4v3"/></svg>
+                <span>Back</span>
+              </button>
+              <span class="panel-badge">Chart 2</span>
+            </div>
+          </div>
+
+          <div class="donut-display-area">
+            <div class="donut-svg-holder" id="accountDonutWrapper">
+              <svg id="accountDonutSvg" viewBox="0 0 200 200" class="donut-svg-graphic"></svg>
+              <div class="donut-center-info" id="accountDonutCenter">
+                <span class="center-tag">Account</span>
+                <span class="center-val font-mono" id="accountDonutCenterAmount">₹0</span>
+                <span class="center-sub" id="accountDonutCenterSub">All Accounts</span>
+              </div>
+            </div>
+            <!-- Legend List -->
+            <div class="donut-legend-box" id="accountLegendList"></div>
+          </div>
+        </section>
+
+        <!-- 2.4 CATEGORY BREAKDOWN MATRIX (COLUMNS S10:T) -->
+        <section class="visual-panel-card" id="cardCategoryMatrix">
+          <div class="panel-header">
+            <h3 class="panel-title">Category Matrix (S10:T)</h3>
+            <span class="matrix-badge font-mono" id="categoryCountBadge">0 categories</span>
+          </div>
+          <div class="matrix-table-wrap">
+            <table class="compact-matrix-table">
+              <thead>
+                <tr>
+                  <th class="text-left">Category</th>
+                  <th class="text-right">Total Expense</th>
+                  <th class="text-right">Share</th>
+                </tr>
+              </thead>
+              <tbody id="categoryMatrixTbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 2.5 EXPENSE ACCOUNT MATRIX (COLUMNS U10:V) -->
+        <section class="visual-panel-card" id="cardAccountMatrix">
+          <div class="panel-header">
+            <h3 class="panel-title">Expense Account Matrix (U10:V)</h3>
+          </div>
+          <div class="matrix-table-wrap">
+            <table class="compact-matrix-table">
+              <thead>
+                <tr>
+                  <th class="text-left">Expense Account</th>
+                  <th class="text-right">Total Expense</th>
+                  <th class="text-right">Share</th>
+                </tr>
+              </thead>
+              <tbody id="accountMatrixTbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 2.6 MONTHLY INFLOW VS OUTFLOW DUAL BARS -->
+        <section class="visual-panel-card" id="cardMonthlyBars">
+          <div class="panel-header">
+            <h3 class="panel-title">Monthly Cash Flow Dual Bars</h3>
+          </div>
+          <div class="monthly-bars-list" id="monthlyFlowBarsContainer"></div>
+        </section>
+
+      </aside>
+
+      <!-- ======================================================================= -->
+      <!-- RIGHT SECTION: LEDGER DATA GRID (ALONGSIDE ON THE RIGHT)                -->
+      <!-- ======================================================================= -->
+      <section class="right-grid-column" id="rightGridColumn">
+        
+        <!-- Grid Top Control Bar -->
+        <div class="grid-top-bar">
+          <div class="grid-meta-left">
+            <div class="grid-badge-row">
+              <span class="grid-main-badge">📋 Result Grid</span>
+              <span class="filter-crumb-pill" id="activeFilterSummary">All Records</span>
+            </div>
+            <div class="grid-subtext">Interactive Ledger Slice • Synchronized with Filters</div>
+          </div>
+
+          <div class="grid-meta-right">
+            <span class="record-counter-pill font-mono" id="recordsPill">866 records</span>
+            <button id="toggleMobileCardsBtn" class="grid-mode-btn" title="Toggle between Table & Cards">Cards Mode</button>
+            <button id="scrollToTopBtn" class="grid-mode-btn" title="Scroll table to top">↑ Top</button>
+          </div>
+        </div>
+
+        <!-- Scrollable Table Box (Matches Google Sheets Scroll Container) -->
+        <div class="sheet-data-grid-scroll-box" id="dataGridScrollBox">
+          <table class="sheet-result-table" id="sheetResultTable">
+            <thead class="sticky-thead">
+              <tr class="header-row">
+                <th class="col-th col-date cursor-pointer" data-sort="date" title="Sort by Date">
+                  <div class="th-content">Date <span class="sort-icon" id="sortDate">↓</span></div>
+                </th>
+                <th class="col-th col-by cursor-pointer" data-sort="by" title="Sort by Person">
+                  <div class="th-content">By <span class="sort-icon" id="sortBy">↕</span></div>
+                </th>
+                <th class="col-th col-for cursor-pointer" data-sort="forEntity" title="Sort by Purpose">
+                  <div class="th-content">For <span class="sort-icon" id="sortFor">↕</span></div>
+                </th>
+                <th class="col-th col-item cursor-pointer" data-sort="item" title="Sort by Description">
+                  <div class="th-content">Item Description <span class="sort-icon" id="sortItem">↕</span></div>
+                </th>
+                <th class="col-th col-expacc cursor-pointer" data-sort="expenseAcc" title="Sort by Expense Account">
+                  <div class="th-content">Expense Account <span class="sort-icon" id="sortExpAcc">↕</span></div>
+                </th>
+                <th class="col-th col-cat cursor-pointer" data-sort="category" title="Sort by Category">
+                  <div class="th-content">Category <span class="sort-icon" id="sortCat">↕</span></div>
+                </th>
+                <th class="col-th col-expamt text-right cursor-pointer" data-sort="amountXpns" title="Sort by Expense Amount">
+                  <div class="th-content justify-end">Expense Amount (₹) <span class="sort-icon" id="sortExpAmt">↕</span></div>
+                </th>
+                <th class="col-th col-notes">Notes / Remarks</th>
+                <th class="col-th col-creditamt text-right cursor-pointer" data-sort="amtInCredit" title="Sort by Credit Amount">
+                  <div class="th-content justify-end">Credit Amount (₹) <span class="sort-icon" id="sortCreditAmt">↕</span></div>
+                </th>
+                <th class="col-th col-incacc">Income Account</th>
+                <th class="col-th col-bal text-right cursor-pointer" data-sort="balance" title="Sort by Running Balance">
+                  <div class="th-content justify-end">Running Balance <span class="sort-icon" id="sortBal">↕</span></div>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="resultGridTbody">
+              <!-- Dynamically rendered rows by app.js -->
+            </tbody>
+          </table>
+
+          <!-- Alternative Mobile Cards Container -->
+          <div class="mobile-cards-view hidden" id="mobileCardsView"></div>
+        </div>
+
+        <!-- Grid Footer Pagination / Status -->
+        <div class="grid-footer-bar">
+          <div class="footer-count" id="footerCountText">Showing 100 of 866 records</div>
+          <div class="footer-buttons">
+            <button id="loadMoreBtn" class="load-more-btn">Load More (50)</button>
+            <button id="loadAllBtn" class="load-all-btn">Show All</button>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- Interactive SVG Tooltip -->
+  <div id="chartTooltip" class="chart-tooltip hidden"></div>
+
+  <!-- Offline Cache Fallback -->
+  <script src="ledger-data.js"></script>
+  <!-- Application Logic & Live Sync -->
+  <script src="app.js"></script>
+</body>
+</html>
