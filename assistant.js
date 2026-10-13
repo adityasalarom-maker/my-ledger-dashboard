@@ -53,6 +53,9 @@
   let currentReviewFilter = 'ALL'; // 'ALL' or 'ATTENTION'
   let currentHistoryFilter = 'ALL'; // 'ALL', 'HOURLY', 'DAILY'
   let lastQueryContributingRecords = [];
+  let lastQueryCompoundData = null;
+  let currentCompoundChartMode = 'donut';
+  let currentCompoundTableMode = 'all';
 
   // --- 4. DOM ELEMENT REFERENCES ---
   const el = {
@@ -87,6 +90,19 @@
     queryKpiExpense: document.getElementById('queryKpiExpense'),
     queryKpiIncome: document.getElementById('queryKpiIncome'),
     queryKpiCount: document.getElementById('queryKpiCount'),
+    queryKpiNetBox: document.getElementById('queryKpiNetBox'),
+    queryKpiNetLabel: document.getElementById('queryKpiNetLabel'),
+    queryKpiNet: document.getElementById('queryKpiNet'),
+    queryChartSwitcher: document.getElementById('queryChartSwitcher'),
+    btnViewDonut: document.getElementById('btnViewDonut'),
+    btnViewBar: document.getElementById('btnViewBar'),
+    queryTablePillGroup: document.getElementById('queryTablePillGroup'),
+    btnTblAll: document.getElementById('btnTblAll'),
+    btnTblExp: document.getElementById('btnTblExp'),
+    btnTblIn: document.getElementById('btnTblIn'),
+    countTblAll: document.getElementById('countTblAll'),
+    countTblExp: document.getElementById('countTblExp'),
+    countTblIn: document.getElementById('countTblIn'),
     queryChartContainer: document.getElementById('queryChartContainer'),
     queryChartCanvas: document.getElementById('queryChartCanvas'),
     queryDonutCategoryPanel: document.getElementById('queryDonutCategoryPanel'),
@@ -755,6 +771,1000 @@
     }
   }
 
+    // --- 10B. QUERY INTENT KNOWLEDGE BASE & PATTERN REGISTRY ---
+  const QUERY_INTENT_DATABASE = [
+  {
+    "id": "COMPOUND_JAN",
+    "dimension": "Month Compound",
+    "month": "Jan",
+    "type": "compound",
+    "queries": [
+      "Jan me rental income and expenses batao",
+      "Jan income aur expense dono batao",
+      "Jan ka hisab aur net balance batao",
+      "Jan aamdani aur kharcha hisab"
+    ]
+  },
+  {
+    "id": "EXPENSE_JAN",
+    "dimension": "Month Expenses",
+    "month": "Jan",
+    "type": "month_expenses",
+    "queries": [
+      "Jan expenses",
+      "Jan ke kharche list do",
+      "Jan total outflow kitna hai",
+      "Jan me kitna spend hua"
+    ]
+  },
+  {
+    "id": "RENTAL_JAN",
+    "dimension": "Month Rental",
+    "month": "Jan",
+    "type": "month_rental",
+    "queries": [
+      "Jan rental income",
+      "Jan me kiraya kitna aaya",
+      "Jan tenant rent total"
+    ]
+  },
+  {
+    "id": "MISC_JAN",
+    "dimension": "Month Misc",
+    "month": "Jan",
+    "type": "month_category",
+    "category": "misc expn",
+    "queries": [
+      "Jan misc expenses",
+      "Jan me misc kharche kitne hue",
+      "Jan miscellaneous spending"
+    ]
+  },
+  {
+    "id": "COMPOUND_FEB",
+    "dimension": "Month Compound",
+    "month": "Feb",
+    "type": "compound",
+    "queries": [
+      "Feb me rental income and expenses batao",
+      "Feb income aur expense dono batao",
+      "Feb ka hisab aur net balance batao",
+      "Feb aamdani aur kharcha hisab"
+    ]
+  },
+  {
+    "id": "EXPENSE_FEB",
+    "dimension": "Month Expenses",
+    "month": "Feb",
+    "type": "month_expenses",
+    "queries": [
+      "Feb expenses",
+      "Feb ke kharche list do",
+      "Feb total outflow kitna hai",
+      "Feb me kitna spend hua"
+    ]
+  },
+  {
+    "id": "RENTAL_FEB",
+    "dimension": "Month Rental",
+    "month": "Feb",
+    "type": "month_rental",
+    "queries": [
+      "Feb rental income",
+      "Feb me kiraya kitna aaya",
+      "Feb tenant rent total"
+    ]
+  },
+  {
+    "id": "MISC_FEB",
+    "dimension": "Month Misc",
+    "month": "Feb",
+    "type": "month_category",
+    "category": "misc expn",
+    "queries": [
+      "Feb misc expenses",
+      "Feb me misc kharche kitne hue",
+      "Feb miscellaneous spending"
+    ]
+  },
+  {
+    "id": "COMPOUND_MAR",
+    "dimension": "Month Compound",
+    "month": "Mar",
+    "type": "compound",
+    "queries": [
+      "Mar me rental income and expenses batao",
+      "Mar income aur expense dono batao",
+      "Mar ka hisab aur net balance batao",
+      "Mar aamdani aur kharcha hisab"
+    ]
+  },
+  {
+    "id": "EXPENSE_MAR",
+    "dimension": "Month Expenses",
+    "month": "Mar",
+    "type": "month_expenses",
+    "queries": [
+      "Mar expenses",
+      "Mar ke kharche list do",
+      "Mar total outflow kitna hai",
+      "Mar me kitna spend hua"
+    ]
+  },
+  {
+    "id": "RENTAL_MAR",
+    "dimension": "Month Rental",
+    "month": "Mar",
+    "type": "month_rental",
+    "queries": [
+      "Mar rental income",
+      "Mar me kiraya kitna aaya",
+      "Mar tenant rent total"
+    ]
+  },
+  {
+    "id": "MISC_MAR",
+    "dimension": "Month Misc",
+    "month": "Mar",
+    "type": "month_category",
+    "category": "misc expn",
+    "queries": [
+      "Mar misc expenses",
+      "Mar me misc kharche kitne hue",
+      "Mar miscellaneous spending"
+    ]
+  },
+  {
+    "id": "COMPOUND_APR",
+    "dimension": "Month Compound",
+    "month": "Apr",
+    "type": "compound",
+    "queries": [
+      "Apr me rental income and expenses batao",
+      "Apr income aur expense dono batao",
+      "Apr ka hisab aur net balance batao",
+      "Apr aamdani aur kharcha hisab"
+    ]
+  },
+  {
+    "id": "EXPENSE_APR",
+    "dimension": "Month Expenses",
+    "month": "Apr",
+    "type": "month_expenses",
+    "queries": [
+      "Apr expenses",
+      "Apr ke kharche list do",
+      "Apr total outflow kitna hai",
+      "Apr me kitna spend hua"
+    ]
+  },
+  {
+    "id": "RENTAL_APR",
+    "dimension": "Month Rental",
+    "month": "Apr",
+    "type": "month_rental",
+    "queries": [
+      "Apr rental income",
+      "Apr me kiraya kitna aaya",
+      "Apr tenant rent total"
+    ]
+  },
+  {
+    "id": "MISC_APR",
+    "dimension": "Month Misc",
+    "month": "Apr",
+    "type": "month_category",
+    "category": "misc expn",
+    "queries": [
+      "Apr misc expenses",
+      "Apr me misc kharche kitne hue",
+      "Apr miscellaneous spending"
+    ]
+  },
+  {
+    "id": "COMPOUND_MAY",
+    "dimension": "Month Compound",
+    "month": "May",
+    "type": "compound",
+    "queries": [
+      "May me rental income and expenses batao",
+      "May income aur expense dono batao",
+      "May ka hisab aur net balance batao",
+      "May aamdani aur kharcha hisab"
+    ]
+  },
+  {
+    "id": "EXPENSE_MAY",
+    "dimension": "Month Expenses",
+    "month": "May",
+    "type": "month_expenses",
+    "queries": [
+      "May expenses",
+      "May ke kharche list do",
+      "May total outflow kitna hai",
+      "May me kitna spend hua"
+    ]
+  },
+  {
+    "id": "RENTAL_MAY",
+    "dimension": "Month Rental",
+    "month": "May",
+    "type": "month_rental",
+    "queries": [
+      "May rental income",
+      "May me kiraya kitna aaya",
+      "May tenant rent total"
+    ]
+  },
+  {
+    "id": "MISC_MAY",
+    "dimension": "Month Misc",
+    "month": "May",
+    "type": "month_category",
+    "category": "misc expn",
+    "queries": [
+      "May misc expenses",
+      "May me misc kharche kitne hue",
+      "May miscellaneous spending"
+    ]
+  },
+  {
+    "id": "COMPOUND_JUN",
+    "dimension": "Month Compound",
+    "month": "Jun",
+    "type": "compound",
+    "queries": [
+      "Jun me rental income and expenses batao",
+      "Jun income aur expense dono batao",
+      "Jun ka hisab aur net balance batao",
+      "Jun aamdani aur kharcha hisab"
+    ]
+  },
+  {
+    "id": "EXPENSE_JUN",
+    "dimension": "Month Expenses",
+    "month": "Jun",
+    "type": "month_expenses",
+    "queries": [
+      "Jun expenses",
+      "Jun ke kharche list do",
+      "Jun total outflow kitna hai",
+      "Jun me kitna spend hua"
+    ]
+  },
+  {
+    "id": "RENTAL_JUN",
+    "dimension": "Month Rental",
+    "month": "Jun",
+    "type": "month_rental",
+    "queries": [
+      "Jun rental income",
+      "Jun me kiraya kitna aaya",
+      "Jun tenant rent total"
+    ]
+  },
+  {
+    "id": "MISC_JUN",
+    "dimension": "Month Misc",
+    "month": "Jun",
+    "type": "month_category",
+    "category": "misc expn",
+    "queries": [
+      "Jun misc expenses",
+      "Jun me misc kharche kitne hue",
+      "Jun miscellaneous spending"
+    ]
+  },
+  {
+    "id": "COMPOUND_JUL",
+    "dimension": "Month Compound",
+    "month": "Jul",
+    "type": "compound",
+    "queries": [
+      "Jul me rental income and expenses batao",
+      "Jul income aur expense dono batao",
+      "Jul ka hisab aur net balance batao",
+      "Jul aamdani aur kharcha hisab"
+    ]
+  },
+  {
+    "id": "EXPENSE_JUL",
+    "dimension": "Month Expenses",
+    "month": "Jul",
+    "type": "month_expenses",
+    "queries": [
+      "Jul expenses",
+      "Jul ke kharche list do",
+      "Jul total outflow kitna hai",
+      "Jul me kitna spend hua"
+    ]
+  },
+  {
+    "id": "RENTAL_JUL",
+    "dimension": "Month Rental",
+    "month": "Jul",
+    "type": "month_rental",
+    "queries": [
+      "Jul rental income",
+      "Jul me kiraya kitna aaya",
+      "Jul tenant rent total"
+    ]
+  },
+  {
+    "id": "MISC_JUL",
+    "dimension": "Month Misc",
+    "month": "Jul",
+    "type": "month_category",
+    "category": "misc expn",
+    "queries": [
+      "Jul misc expenses",
+      "Jul me misc kharche kitne hue",
+      "Jul miscellaneous spending"
+    ]
+  },
+  {
+    "id": "COMPOUND_AUG",
+    "dimension": "Month Compound",
+    "month": "Aug",
+    "type": "compound",
+    "queries": [
+      "Aug me rental income and expenses batao",
+      "Aug income aur expense dono batao",
+      "Aug ka hisab aur net balance batao",
+      "Aug aamdani aur kharcha hisab"
+    ]
+  },
+  {
+    "id": "EXPENSE_AUG",
+    "dimension": "Month Expenses",
+    "month": "Aug",
+    "type": "month_expenses",
+    "queries": [
+      "Aug expenses",
+      "Aug ke kharche list do",
+      "Aug total outflow kitna hai",
+      "Aug me kitna spend hua"
+    ]
+  },
+  {
+    "id": "RENTAL_AUG",
+    "dimension": "Month Rental",
+    "month": "Aug",
+    "type": "month_rental",
+    "queries": [
+      "Aug rental income",
+      "Aug me kiraya kitna aaya",
+      "Aug tenant rent total"
+    ]
+  },
+  {
+    "id": "MISC_AUG",
+    "dimension": "Month Misc",
+    "month": "Aug",
+    "type": "month_category",
+    "category": "misc expn",
+    "queries": [
+      "Aug misc expenses",
+      "Aug me misc kharche kitne hue",
+      "Aug miscellaneous spending"
+    ]
+  },
+  {
+    "id": "COMPOUND_SEP",
+    "dimension": "Month Compound",
+    "month": "Sep",
+    "type": "compound",
+    "queries": [
+      "Sep me rental income and expenses batao",
+      "Sep income aur expense dono batao",
+      "Sep ka hisab aur net balance batao",
+      "Sep aamdani aur kharcha hisab"
+    ]
+  },
+  {
+    "id": "EXPENSE_SEP",
+    "dimension": "Month Expenses",
+    "month": "Sep",
+    "type": "month_expenses",
+    "queries": [
+      "Sep expenses",
+      "Sep ke kharche list do",
+      "Sep total outflow kitna hai",
+      "Sep me kitna spend hua"
+    ]
+  },
+  {
+    "id": "RENTAL_SEP",
+    "dimension": "Month Rental",
+    "month": "Sep",
+    "type": "month_rental",
+    "queries": [
+      "Sep rental income",
+      "Sep me kiraya kitna aaya",
+      "Sep tenant rent total"
+    ]
+  },
+  {
+    "id": "MISC_SEP",
+    "dimension": "Month Misc",
+    "month": "Sep",
+    "type": "month_category",
+    "category": "misc expn",
+    "queries": [
+      "Sep misc expenses",
+      "Sep me misc kharche kitne hue",
+      "Sep miscellaneous spending"
+    ]
+  },
+  {
+    "id": "COMPOUND_OCT",
+    "dimension": "Month Compound",
+    "month": "Oct",
+    "type": "compound",
+    "queries": [
+      "Oct me rental income and expenses batao",
+      "Oct income aur expense dono batao",
+      "Oct ka hisab aur net balance batao",
+      "Oct aamdani aur kharcha hisab"
+    ]
+  },
+  {
+    "id": "EXPENSE_OCT",
+    "dimension": "Month Expenses",
+    "month": "Oct",
+    "type": "month_expenses",
+    "queries": [
+      "Oct expenses",
+      "Oct ke kharche list do",
+      "Oct total outflow kitna hai",
+      "Oct me kitna spend hua"
+    ]
+  },
+  {
+    "id": "RENTAL_OCT",
+    "dimension": "Month Rental",
+    "month": "Oct",
+    "type": "month_rental",
+    "queries": [
+      "Oct rental income",
+      "Oct me kiraya kitna aaya",
+      "Oct tenant rent total"
+    ]
+  },
+  {
+    "id": "MISC_OCT",
+    "dimension": "Month Misc",
+    "month": "Oct",
+    "type": "month_category",
+    "category": "misc expn",
+    "queries": [
+      "Oct misc expenses",
+      "Oct me misc kharche kitne hue",
+      "Oct miscellaneous spending"
+    ]
+  },
+  {
+    "id": "CAT_ACCESSORIES",
+    "dimension": "Category",
+    "category": "Accessories",
+    "type": "category",
+    "queries": [
+      "Accessories category ka total kitna hai?",
+      "Accessories expenses dikhao",
+      "All-time Accessories spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_BUDGET",
+    "dimension": "Category",
+    "category": "BUDGET",
+    "type": "category",
+    "queries": [
+      "BUDGET category ka total kitna hai?",
+      "BUDGET expenses dikhao",
+      "All-time BUDGET spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_BILLS",
+    "dimension": "Category",
+    "category": "Bills",
+    "type": "category",
+    "queries": [
+      "Bills category ka total kitna hai?",
+      "Bills expenses dikhao",
+      "All-time Bills spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_CHARITY",
+    "dimension": "Category",
+    "category": "Charity",
+    "type": "category",
+    "queries": [
+      "Charity category ka total kitna hai?",
+      "Charity expenses dikhao",
+      "All-time Charity spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_CLOTHES",
+    "dimension": "Category",
+    "category": "Clothes",
+    "type": "category",
+    "queries": [
+      "Clothes category ka total kitna hai?",
+      "Clothes expenses dikhao",
+      "All-time Clothes spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_ENTERTAINMENT",
+    "dimension": "Category",
+    "category": "Entertainment",
+    "type": "category",
+    "queries": [
+      "Entertainment category ka total kitna hai?",
+      "Entertainment expenses dikhao",
+      "All-time Entertainment spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_FOOD",
+    "dimension": "Category",
+    "category": "Food",
+    "type": "category",
+    "queries": [
+      "Food category ka total kitna hai?",
+      "Food expenses dikhao",
+      "All-time Food spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_FRUITS",
+    "dimension": "Category",
+    "category": "Fruits",
+    "type": "category",
+    "queries": [
+      "Fruits category ka total kitna hai?",
+      "Fruits expenses dikhao",
+      "All-time Fruits spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_FUEL",
+    "dimension": "Category",
+    "category": "Fuel",
+    "type": "category",
+    "queries": [
+      "Fuel category ka total kitna hai?",
+      "Fuel expenses dikhao",
+      "All-time Fuel spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_GAS",
+    "dimension": "Category",
+    "category": "Gas",
+    "type": "category",
+    "queries": [
+      "Gas category ka total kitna hai?",
+      "Gas expenses dikhao",
+      "All-time Gas spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_GIFTS",
+    "dimension": "Category",
+    "category": "Gifts",
+    "type": "category",
+    "queries": [
+      "Gifts category ka total kitna hai?",
+      "Gifts expenses dikhao",
+      "All-time Gifts spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_HOUSING",
+    "dimension": "Category",
+    "category": "Housing",
+    "type": "category",
+    "queries": [
+      "Housing category ka total kitna hai?",
+      "Housing expenses dikhao",
+      "All-time Housing spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_INSURANCES__PUC",
+    "dimension": "Category",
+    "category": "Insurances \\ PUC",
+    "type": "category",
+    "queries": [
+      "Insurances  PUC category ka total kitna hai?",
+      "Insurances  PUC expenses dikhao",
+      "All-time Insurances  PUC spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_MEDICAL",
+    "dimension": "Category",
+    "category": "Medical",
+    "type": "category",
+    "queries": [
+      "Medical category ka total kitna hai?",
+      "Medical expenses dikhao",
+      "All-time Medical spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_OTHER_HOUSES",
+    "dimension": "Category",
+    "category": "Other Houses",
+    "type": "category",
+    "queries": [
+      "Other Houses category ka total kitna hai?",
+      "Other Houses expenses dikhao",
+      "All-time Other Houses spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_PERSONAL_CARE",
+    "dimension": "Category",
+    "category": "Personal Care",
+    "type": "category",
+    "queries": [
+      "Personal Care category ka total kitna hai?",
+      "Personal Care expenses dikhao",
+      "All-time Personal Care spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_PETS",
+    "dimension": "Category",
+    "category": "Pets",
+    "type": "category",
+    "queries": [
+      "Pets category ka total kitna hai?",
+      "Pets expenses dikhao",
+      "All-time Pets spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_RASHAN",
+    "dimension": "Category",
+    "category": "Rashan",
+    "type": "category",
+    "queries": [
+      "Rashan category ka total kitna hai?",
+      "Rashan expenses dikhao",
+      "All-time Rashan spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_RECHARGES",
+    "dimension": "Category",
+    "category": "Recharges",
+    "type": "category",
+    "queries": [
+      "Recharges category ka total kitna hai?",
+      "Recharges expenses dikhao",
+      "All-time Recharges spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_SABJI",
+    "dimension": "Category",
+    "category": "Sabji",
+    "type": "category",
+    "queries": [
+      "Sabji category ka total kitna hai?",
+      "Sabji expenses dikhao",
+      "All-time Sabji spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_SAVINGS",
+    "dimension": "Category",
+    "category": "Savings",
+    "type": "category",
+    "queries": [
+      "Savings category ka total kitna hai?",
+      "Savings expenses dikhao",
+      "All-time Savings spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_SERVICES__REPAIRS",
+    "dimension": "Category",
+    "category": "Services \\ Repairs",
+    "type": "category",
+    "queries": [
+      "Services  Repairs category ka total kitna hai?",
+      "Services  Repairs expenses dikhao",
+      "All-time Services  Repairs spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_STAY",
+    "dimension": "Category",
+    "category": "Stay",
+    "type": "category",
+    "queries": [
+      "Stay category ka total kitna hai?",
+      "Stay expenses dikhao",
+      "All-time Stay spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_WORK",
+    "dimension": "Category",
+    "category": "Work",
+    "type": "category",
+    "queries": [
+      "Work category ka total kitna hai?",
+      "Work expenses dikhao",
+      "All-time Work spending kitni hai?"
+    ]
+  },
+  {
+    "id": "CAT_MISC_EXPN",
+    "dimension": "Category",
+    "category": "misc expn",
+    "type": "category",
+    "queries": [
+      "misc expn category ka total kitna hai?",
+      "misc expn expenses dikhao",
+      "All-time misc expn spending kitni hai?"
+    ]
+  },
+  {
+    "id": "TENANT_CHOTELAL",
+    "dimension": "Rental Tenant",
+    "tenant": "chotelal",
+    "type": "tenant_rent",
+    "queries": [
+      "Chotelal rent kitna aaya",
+      "Chotelal ka kiraya total",
+      "Chotelal tenant payment details"
+    ]
+  },
+  {
+    "id": "TENANT_SONI",
+    "dimension": "Rental Tenant",
+    "tenant": "soni",
+    "type": "tenant_rent",
+    "queries": [
+      "Soni rent kitna aaya",
+      "Soni ka kiraya total",
+      "Soni tenant payment details"
+    ]
+  },
+  {
+    "id": "TENANT_NANHE",
+    "dimension": "Rental Tenant",
+    "tenant": "nanhe",
+    "type": "tenant_rent",
+    "queries": [
+      "Nanhe rent kitna aaya",
+      "Nanhe ka kiraya total",
+      "Nanhe tenant payment details"
+    ]
+  },
+  {
+    "id": "TENANT_PUSHPENDRA",
+    "dimension": "Rental Tenant",
+    "tenant": "pushpendra",
+    "type": "tenant_rent",
+    "queries": [
+      "Pushpendra rent kitna aaya",
+      "Pushpendra ka kiraya total",
+      "Pushpendra tenant payment details"
+    ]
+  },
+  {
+    "id": "TENANT_TELCO",
+    "dimension": "Rental Tenant",
+    "tenant": "telco",
+    "type": "tenant_rent",
+    "queries": [
+      "Telco rent kitna aaya",
+      "Telco ka kiraya total",
+      "Telco tenant payment details"
+    ]
+  },
+  {
+    "id": "TENANT_CHANDAN",
+    "dimension": "Rental Tenant",
+    "tenant": "chandan",
+    "type": "tenant_rent",
+    "queries": [
+      "Chandan Singh rent kitna aaya",
+      "Chandan Singh ka kiraya total",
+      "Chandan Singh tenant payment details"
+    ]
+  },
+  {
+    "id": "TENANT_CHARAN",
+    "dimension": "Rental Tenant",
+    "tenant": "charan",
+    "type": "tenant_rent",
+    "queries": [
+      "Charan Singh rent kitna aaya",
+      "Charan Singh ka kiraya total",
+      "Charan Singh tenant payment details"
+    ]
+  },
+  {
+    "id": "TENANT_RAJEEV",
+    "dimension": "Rental Tenant",
+    "tenant": "rajeev",
+    "type": "tenant_rent",
+    "queries": [
+      "Rajeev rent kitna aaya",
+      "Rajeev ka kiraya total",
+      "Rajeev tenant payment details"
+    ]
+  },
+  {
+    "id": "ACC_PNB",
+    "dimension": "Account",
+    "account": "pnb",
+    "type": "account",
+    "queries": [
+      "PNB Online se kitna spend hua?",
+      "PNB Online account spending total",
+      "PNB Online inflow and outflow"
+    ]
+  },
+  {
+    "id": "ACC_CASH",
+    "dimension": "Account",
+    "account": "cash",
+    "type": "account",
+    "queries": [
+      "Hom Cash se kitna spend hua?",
+      "Hom Cash account spending total",
+      "Hom Cash inflow and outflow"
+    ]
+  },
+  {
+    "id": "ACC_TRISHAA",
+    "dimension": "Account",
+    "account": "trishaa",
+    "type": "account",
+    "queries": [
+      "Trishaa GPay se kitna spend hua?",
+      "Trishaa GPay account spending total",
+      "Trishaa GPay inflow and outflow"
+    ]
+  },
+  {
+    "id": "ACC_CO_BANK",
+    "dimension": "Account",
+    "account": "co bank",
+    "type": "account",
+    "queries": [
+      "CO Bank se kitna spend hua?",
+      "CO Bank account spending total",
+      "CO Bank inflow and outflow"
+    ]
+  },
+  {
+    "id": "ITEM_DUDH",
+    "dimension": "Item Description",
+    "item": "dudh",
+    "type": "item",
+    "queries": [
+      "Monthly Dudh kitna hua?",
+      "Monthly Dudh expenses list",
+      "Monthly Dudh spending total"
+    ]
+  },
+  {
+    "id": "ITEM_WORKER",
+    "dimension": "Item Description",
+    "item": "worker",
+    "type": "item",
+    "queries": [
+      "Worker House Salary kitna hua?",
+      "Worker House Salary expenses list",
+      "Worker House Salary spending total"
+    ]
+  },
+  {
+    "id": "ITEM_NETFLIX",
+    "dimension": "Item Description",
+    "item": "netflix",
+    "type": "item",
+    "queries": [
+      "Netflix Recharges kitna hua?",
+      "Netflix Recharges expenses list",
+      "Netflix Recharges spending total"
+    ]
+  },
+  {
+    "id": "ITEM_GOLD",
+    "dimension": "Item Description",
+    "item": "gold",
+    "type": "item",
+    "queries": [
+      "Gold Cash kitna hua?",
+      "Gold Cash expenses list",
+      "Gold Cash spending total"
+    ]
+  },
+  {
+    "id": "ITEM_FLIPKART",
+    "dimension": "Item Description",
+    "item": "flipkart",
+    "type": "item",
+    "queries": [
+      "Flipkart Refunds kitna hua?",
+      "Flipkart Refunds expenses list",
+      "Flipkart Refunds spending total"
+    ]
+  },
+  {
+    "id": "GLOBAL_RENTAL_ALL",
+    "dimension": "Rental Global",
+    "type": "rental_all",
+    "queries": [
+      "Batao total rental income kitni hai?",
+      "All-time rental income",
+      "Kul kiraya kitna aaya total"
+    ]
+  },
+  {
+    "id": "GLOBAL_LAST_MONTH",
+    "dimension": "Relative Month",
+    "type": "relative_month",
+    "relative": "LAST_MONTH",
+    "queries": [
+      "last month ke expense list do",
+      "lasr month expenses",
+      "pichle mahine ka kharcha dikhao"
+    ]
+  }
+];
+
+  // Helper to identify tenant rental credit transactions
+  function isRentalRecord(r) {
+    const blob = `${r.item || ''} ${r.note || ''} ${r.category || ''}`.toLowerCase();
+    return /rent|kiraya|tenant|chotelal|soni|nanhe|pushpendra|telco|chandan|charan|rajeev|cash rent/i.test(blob);
+  }
+
+  function getTenantLabel(r) {
+    const blob = `${r.item || ''} ${r.note || ''}`.toLowerCase();
+    if (blob.includes('chotelal')) return 'Chotelal';
+    if (blob.includes('soni')) return 'Soni';
+    if (blob.includes('nanhe')) return 'Nanhe';
+    if (blob.includes('pushpendra')) return 'Pushpendra';
+    if (blob.includes('telco')) return 'Telco';
+    if (blob.includes('chandan')) return 'Chandan Singh';
+    if (blob.includes('charan')) return 'Charan Singh';
+    if (blob.includes('rajeev')) return 'Rajeev';
+    if (blob.includes('cash rent') || blob.includes('rent cash')) return 'Cash Rent';
+    if (blob.includes('rent online') || blob.includes('online rent')) return 'Online Rent';
+    if (blob.includes('gold')) return 'Gold Rent';
+    return 'Tenant Credit';
+  }
+
+  const MONTH_PATTERNS = [
+    { abbr: 'Jan', regex: /\b(jan|january|januray)\b/i },
+    { abbr: 'Feb', regex: /\b(feb|february|februray)\b/i },
+    { abbr: 'Mar', regex: /\b(mar|march)\b/i },
+    { abbr: 'Apr', regex: /\b(apr|april)\b/i },
+    { abbr: 'May', regex: /\b(may)\b/i },
+    { abbr: 'Jun', regex: /\b(jun|june)\b/i },
+    { abbr: 'Jul', regex: /\b(jul|july)\b/i },
+    { abbr: 'Aug', regex: /\b(aug|august)\b/i },
+    { abbr: 'Sep', regex: /\b(sep|sept|september)\b/i },
+    { abbr: 'Oct', regex: /\b(oct|october)\b/i },
+    { abbr: 'Nov', regex: /\b(nov|november)\b/i },
+    { abbr: 'Dec', regex: /\b(dec|december)\b/i }
+  ];
+
   // --- 11. FEATURE B: ASK MY LEDGER (DETERMINISTIC QUERY ENGINE) ---
   function executeNaturalLanguageQuery(queryText) {
     const rawQ = queryText.trim();
@@ -770,70 +1780,262 @@
     el.queryResultCard.classList.remove('hidden');
     el.answerHeadline.textContent = 'Analyzing question...';
 
-    // 1. Identify Target Direction
+    // 1. Reset auxiliary UI components
+    if (el.queryKpiNetBox) el.queryKpiNetBox.classList.add('hidden');
+    if (el.queryKpiNet) el.queryKpiNet.textContent = '';
+    if (el.queryChartSwitcher) el.queryChartSwitcher.classList.add('hidden');
+    if (el.queryTablePillGroup) el.queryTablePillGroup.classList.add('hidden');
+    hideDonutPanel();
+
+    // 2. Intent Extraction
+    const isCompound = /income.*expense|expense.*income|rental.*expense|aamdani.*kharcha|kamai.*kharcha|kharcha.*kamai|dono|net|hisab|profit.*loss|balance/i.test(q);
     let direction = 'All';
-    if (/income|kamai|aamdani|credit/i.test(q)) direction = 'Income';
+    if (isCompound) direction = 'Both';
+    else if (/income|kamai|aamdani|credit/i.test(q)) direction = 'Income';
     else if (/expense|kharcha|spent|spend|debit|outflow|list/i.test(q)) direction = 'Expense';
 
-    // 2. Relative Month & Typo Resolver
-    // Handles "lasr month", "last month", "pichle mahine", "this month"
-    const monthOrder = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-    const monthAbbrMap = {
-      jan: 'Jan', feb: 'Feb', mar: 'Mar', apr: 'Apr', may: 'May', jun: 'Jun',
-      jul: 'Jul', aug: 'Aug', sep: 'Sep', oct: 'Oct', nov: 'Nov', dec: 'Dec'
-    };
-
-    let targetRelativeMonth = null;
-    if (/lasr month|last month|pichle mahine|pichla month|prev month|previous month/i.test(q)) {
-      targetRelativeMonth = 'LAST_MONTH';
-    } else if (/this month|is month|current month|is mahine/i.test(q)) {
-      targetRelativeMonth = 'THIS_MONTH';
-    }
-
-    // Determine current month in context
-    const currentMonthAbbr = 'Oct'; // October 2026
-    const currIdx = monthOrder.indexOf(currentMonthAbbr.toLowerCase());
-    const prevIdx = (currIdx - 1 + 12) % 12;
-    const lastMonthAbbr = monthAbbrMap[monthOrder[prevIdx]];
-
+    // Relative Month & Exact Month Resolver
     const foundMonths = [];
-    if (targetRelativeMonth === 'LAST_MONTH') {
-      foundMonths.push(lastMonthAbbr);
-    } else if (targetRelativeMonth === 'THIS_MONTH') {
-      foundMonths.push(currentMonthAbbr);
+    if (/lasr month|last month|pichle mahine|pichla month|prev month|previous month/i.test(q)) {
+      foundMonths.push('Sep'); // September 2026 in current dataset
+    } else if (/this month|is month|current month|is mahine/i.test(q)) {
+      foundMonths.push('Oct'); // October 2026 in current dataset
     } else {
-      Object.keys(monthAbbrMap).forEach(mStr => {
-        const regex = new RegExp(`\\b${mStr}\\b`, 'i');
-        if (regex.test(q)) {
-          const canonical = monthAbbrMap[mStr];
-          if (!foundMonths.includes(canonical)) foundMonths.push(canonical);
+      MONTH_PATTERNS.forEach(m => {
+        if (m.regex.test(q)) {
+          if (!foundMonths.includes(m.abbr)) foundMonths.push(m.abbr);
         }
       });
     }
 
-    // 3. Identify Target Category
+    // Target Category Detection
     let targetCategory = null;
     for (const cat of MASTER_CATEGORIES) {
-      if (q.includes(cat.toLowerCase())) {
+      const cClean = cat.toLowerCase().replace(/\\/g, '').trim();
+      if (cClean === 'misc expn') {
+        if (/\bmisc\b|miscellaneous/i.test(q)) {
+          targetCategory = 'misc expn';
+          break;
+        }
+      } else if (q.includes(cClean)) {
         targetCategory = cat;
         break;
       }
     }
     if (!targetCategory) {
-      if (/rashan|groceries|kirana/i.test(q)) targetCategory = 'Rashan';
-      else if (/sabji|tarkari|vegetables/i.test(q)) targetCategory = 'Sabji';
-      else if (/rent|kiraya/i.test(q) && direction === 'Income') targetCategory = 'Income';
-      else if (/rent|kiraya/i.test(q)) targetCategory = 'Housing';
-      else if (/personal care|brush|soap/i.test(q)) targetCategory = 'Personal Care';
+      if (/rashan|groceries|kirana|ration/i.test(q)) targetCategory = 'Rashan';
+      else if (/sabji|sabzi|tarkari|vegetables|mandi/i.test(q)) targetCategory = 'Sabji';
+      else if (/food|khana|restaurant|swiggy|zomato/i.test(q)) targetCategory = 'Food';
+      else if (/petrol|diesel|fuel|gaadi/i.test(q)) targetCategory = 'Fuel';
+      else if (/medical|dawai|doctor|medicine|chemist/i.test(q)) targetCategory = 'Medical';
+      else if (/bijli|electricity|bills|utility/i.test(q)) targetCategory = 'Bills';
+      else if (/recharge|recharges|jio|airtel|phone/i.test(q)) targetCategory = 'Recharges';
+      else if (/personal care|soap|shampoo|brush|salon/i.test(q)) targetCategory = 'Personal Care';
+      else if (/charity|daan|punya|mandir|donation/i.test(q)) targetCategory = 'Charity';
+      else if (/fruits|fruit|phal/i.test(q)) targetCategory = 'Fruits';
+      else if (/clothes|kapde/i.test(q)) targetCategory = 'Clothes';
+      else if (/repairs|services/i.test(q)) targetCategory = 'Services \\ Repairs';
     }
 
-    // 4. Identify Target Account
+    // Rental intent & specific tenant
+    const isRental = /rent|kiraya|tenant|chotelal|soni|nanhe|pushpendra|telco|chandan|charan|rajeev/i.test(q);
+    let tenantName = null;
+    for (const t of ['chotelal', 'soni', 'nanhe', 'pushpendra', 'telco', 'chandan', 'charan', 'rajeev']) {
+      if (q.includes(t)) {
+        tenantName = t;
+        break;
+      }
+    }
+
+    // Target account
     let targetAccount = null;
     if (/pnb/i.test(q)) targetAccount = 'PNB';
-    else if (/sbi/i.test(q)) targetAccount = 'SBI';
-    else if (/cash/i.test(q)) targetAccount = 'Cash';
+    else if (/cash/i.test(q) && !isRental) targetAccount = 'Cash';
+    else if (/trishaa/i.test(q)) targetAccount = 'Trishaa';
+    else if (/co bank/i.test(q)) targetAccount = 'CO Bank';
 
-    // --- CASE 1: Monthly Expense List / Donut Breakdown ("last month ke expense list do" / "category-wise") ---
+    // Target item keyword
+    let itemKeyword = null;
+    for (const kw of ['dudh', 'milk', 'worker', 'salary', 'netflix', 'ghhee', 'ghee', 'gold', 'flipkart']) {
+      if (q.includes(kw)) {
+        itemKeyword = kw;
+        break;
+      }
+    }
+
+    // =========================================================================
+    // CASE 1: COMPOUND QUERY (Both Income & Outflow, e.g. "Aug me rental income and expenses batao")
+    // =========================================================================
+    if (isCompound) {
+      const monthFilter = foundMonths.length === 1 ? foundMonths[0] : null;
+      let pool = ledgerRecords;
+      if (monthFilter) {
+        pool = pool.filter(r => (r.month || '').toLowerCase() === monthFilter.toLowerCase());
+      }
+
+      const outflowRecs = pool.filter(r => (r.amountXpns || 0) > 0);
+      const inflowRecs = pool.filter(r => (r.amtInCredit || 0) > 0);
+      const rentalRecs = inflowRecs.filter(isRentalRecord);
+
+      const totalOutflow = outflowRecs.reduce((a, b) => a + b.amountXpns, 0);
+      const totalInflow = inflowRecs.reduce((a, b) => a + b.amtInCredit, 0);
+      const totalRental = rentalRecs.reduce((a, b) => a + b.amtInCredit, 0);
+      const netBalance = totalInflow - totalOutflow;
+
+      const monthLabel = monthFilter ? `${monthFilter} 2026` : 'All-Time';
+      el.answerHeadline.textContent = `${monthLabel} Financial Summary: ₹${totalOutflow.toLocaleString('en-IN')} Spent • ₹${totalInflow.toLocaleString('en-IN')} Inflow (₹${totalRental.toLocaleString('en-IN')} Rental)`;
+      el.answerSubtext.textContent = `Calculated across ${pool.length} authorized transactions strictly in ${monthLabel}. Net Balance: ${netBalance >= 0 ? '+' : ''}₹${netBalance.toLocaleString('en-IN')}.`;
+
+      el.queryKpiExpense.textContent = `₹${totalOutflow.toLocaleString('en-IN')}`;
+      el.queryKpiIncome.textContent = `₹${totalInflow.toLocaleString('en-IN')}`;
+      el.queryKpiCount.textContent = pool.length;
+
+      if (el.queryKpiNetBox && el.queryKpiNet) {
+        el.queryKpiNetBox.classList.remove('hidden');
+        el.queryKpiNet.textContent = `${netBalance >= 0 ? '+' : ''}₹${netBalance.toLocaleString('en-IN')}`;
+      }
+
+      // Group outflow categories for the Donut visual
+      const catMap = {};
+      outflowRecs.forEach(r => {
+        const c = r.category || 'misc expn';
+        catMap[c] = (catMap[c] || 0) + r.amountXpns;
+      });
+      const sortedCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+
+      // Cache compound data for interactive toggles
+      lastQueryCompoundData = {
+        monthLabel,
+        totalOutflow,
+        totalInflow,
+        totalRental,
+        netBalance,
+        sortedCats,
+        outflowRecs,
+        inflowRecs,
+        allRecs: pool
+      };
+
+      // Show View Switcher: Donut vs Inflow/Outflow Bar
+      if (el.queryChartSwitcher) {
+        el.queryChartSwitcher.classList.remove('hidden');
+        if (el.btnViewDonut) el.btnViewDonut.classList.add('active');
+        if (el.btnViewBar) el.btnViewBar.classList.remove('active');
+      }
+
+      // Render default: Interactive Donut + Category Breakdown Cards
+      renderInteractiveDonut(sortedCats, outflowRecs, {
+        centerLabel: `${monthFilter || 'TOTAL'} EXP`,
+        amountColor: '#fb7185'
+      });
+
+      // Show Table Filter Toggles
+      if (el.queryTablePillGroup) {
+        el.queryTablePillGroup.classList.remove('hidden');
+        if (el.countTblAll) el.countTblAll.textContent = pool.length;
+        if (el.countTblExp) el.countTblExp.textContent = outflowRecs.length;
+        if (el.countTblIn) el.countTblIn.textContent = inflowRecs.length;
+        if (el.btnTblAll) el.btnTblAll.classList.add('active');
+        if (el.btnTblExp) el.btnTblExp.classList.remove('active');
+        if (el.btnTblIn) el.btnTblIn.classList.remove('active');
+      }
+
+      lastQueryContributingRecords = pool;
+      renderContributingTable(pool);
+      logQueryAudit(rawQ, el.answerHeadline.textContent, totalOutflow, totalInflow, pool.length);
+      return;
+    }
+
+    // =========================================================================
+    // CASE 2: SINGLE CATEGORY IN A SPECIFIC MONTH (e.g. "March misc expenses", "August rashan")
+    // =========================================================================
+    if (foundMonths.length === 1 && targetCategory) {
+      const monthStr = foundMonths[0];
+      const isInc = (direction === 'Income' || targetCategory === 'Income');
+
+      // STRICT MONTH SCOPING: under no circumstances may records from other months leak!
+      const matching = ledgerRecords.filter(r => 
+        (r.month || '').toLowerCase() === monthStr.toLowerCase() &&
+        r.category.toLowerCase() === targetCategory.toLowerCase()
+      );
+      const totalAmt = matching.reduce((a, b) => a + (isInc ? b.amtInCredit : b.amountXpns), 0);
+
+      // Extract full month expenses for complete Donut visualization context
+      const allMonthTx = ledgerRecords.filter(r => (r.month || '').toLowerCase() === monthStr.toLowerCase() && (r.amountXpns || 0) > 0);
+      const catMap = {};
+      allMonthTx.forEach(r => {
+        const c = r.category || 'misc expn';
+        catMap[c] = (catMap[c] || 0) + r.amountXpns;
+      });
+      const sortedCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+
+      el.answerHeadline.textContent = `${monthStr} 2026 ${targetCategory}: ₹${totalAmt.toLocaleString('en-IN')} Spent`;
+      el.answerSubtext.textContent = `Found ${matching.length} transactions strictly in ${monthStr} 2026. 100% verified against ledger data.`;
+
+      el.queryKpiExpense.textContent = isInc ? '₹0' : `₹${totalAmt.toLocaleString('en-IN')}`;
+      el.queryKpiIncome.textContent = isInc ? `₹${totalAmt.toLocaleString('en-IN')}` : '₹0';
+      el.queryKpiCount.textContent = matching.length;
+
+      // Render interactive Donut of the month with targetCategory pre-selected!
+      renderInteractiveDonut(sortedCats, allMonthTx, {
+        centerLabel: `${monthStr} EXP`,
+        preselectedCategory: targetCategory
+      });
+
+      lastQueryContributingRecords = matching;
+      renderContributingTable(matching);
+      logQueryAudit(rawQ, el.answerHeadline.textContent, isInc ? 0 : totalAmt, isInc ? totalAmt : 0, matching.length);
+      return;
+    }
+
+    // =========================================================================
+    // CASE 3: RENTAL INCOME QUERY (e.g. "Total Rental Income", "August rental income", "Chotelal rent")
+    // =========================================================================
+    if (isRental && !isCompound) {
+      let pool = ledgerRecords.filter(r => (r.amtInCredit || 0) > 0 && isRentalRecord(r));
+      let monthLabel = 'All-Time';
+      if (foundMonths.length === 1) {
+        monthLabel = foundMonths[0];
+        pool = pool.filter(r => (r.month || '').toLowerCase() === foundMonths[0].toLowerCase());
+      }
+      if (tenantName) {
+        pool = pool.filter(r => `${r.item} ${r.note}`.toLowerCase().includes(tenantName));
+      }
+
+      const totalRent = pool.reduce((a, b) => a + b.amtInCredit, 0);
+
+      // Group tenant credit breakdown for Donut visual
+      const tenantMap = {};
+      pool.forEach(r => {
+        const t = getTenantLabel(r);
+        tenantMap[t] = (tenantMap[t] || 0) + r.amtInCredit;
+      });
+      const sortedTenants = Object.entries(tenantMap).sort((a, b) => b[1] - a[1]);
+
+      const titleTenant = tenantName ? `${tenantName.toUpperCase()} ` : '';
+      el.answerHeadline.textContent = `${monthLabel} ${titleTenant}Rental Income: ₹${totalRent.toLocaleString('en-IN')}`;
+      el.answerSubtext.textContent = `Calculated deterministically from ${pool.length} tenant credit transactions.`;
+
+      el.queryKpiExpense.textContent = '₹0';
+      el.queryKpiIncome.textContent = `₹${totalRent.toLocaleString('en-IN')}`;
+      el.queryKpiCount.textContent = pool.length;
+
+      // Render Donut of Tenant Contributions
+      renderInteractiveDonut(sortedTenants, pool, {
+        centerLabel: 'RENT INFLOW',
+        amountColor: '#34d399',
+        filterField: 'tenant'
+      });
+
+      lastQueryContributingRecords = pool;
+      renderContributingTable(pool);
+      logQueryAudit(rawQ, el.answerHeadline.textContent, 0, totalRent, pool.length);
+      return;
+    }
+
+    // =========================================================================
+    // CASE 4: MONTH EXPENSES BREAKDOWN (e.g. "last month ke expense list do", "March expenses", "Category-wise")
+    // =========================================================================
     if (!targetCategory && ((foundMonths.length === 1 && (direction === 'Expense' || /list|breakdown/i.test(q))) || /category[- ]wise|sabse zyada|breakdown|categories/i.test(q))) {
       const monthFilter = foundMonths.length === 1 ? foundMonths[0] : null;
       let monthTx = ledgerRecords.filter(r => (r.amountXpns || 0) > 0);
@@ -860,44 +2062,20 @@
       el.queryKpiCount.textContent = monthTx.length;
 
       // Render Donut & Category Cards
-      renderInteractiveDonut(sortedCats, monthTx);
+      renderInteractiveDonut(sortedCats, monthTx, {
+        centerLabel: `${monthFilter || 'TOTAL'} EXP`,
+        amountColor: '#fb7185'
+      });
+
       lastQueryContributingRecords = monthTx;
       renderContributingTable(monthTx);
-
       logQueryAudit(rawQ, el.answerHeadline.textContent, totalExpense, 0, monthTx.length);
       return;
     }
 
-    // --- CASE 1B: Single Category in a Specific Month (e.g. "March rental income", "September ka rashan") ---
-    if (foundMonths.length === 1 && targetCategory) {
-      const monthStr = foundMonths[0];
-      const monthCatRecords = ledgerRecords.filter(r => 
-        (r.month || '').toLowerCase() === monthStr.toLowerCase() &&
-        r.category.toLowerCase() === targetCategory.toLowerCase()
-      );
-      const isInc = (direction === 'Income' || targetCategory === 'Income' || /rent|kiraya/i.test(q));
-      const totalAmt = monthCatRecords.reduce((a, b) => a + (isInc ? b.amtInCredit : b.amountXpns), 0);
-
-      el.answerHeadline.textContent = `${monthStr} 2026 ${targetCategory}: ₹${totalAmt.toLocaleString('en-IN')}`;
-      el.answerSubtext.textContent = `Found ${monthCatRecords.length} transactions in ${monthStr} 2026. 100% deterministic calculation.`;
-
-      el.queryKpiExpense.textContent = isInc ? '₹0' : `₹${totalAmt.toLocaleString('en-IN')}`;
-      el.queryKpiIncome.textContent = isInc ? `₹${totalAmt.toLocaleString('en-IN')}` : '₹0';
-      el.queryKpiCount.textContent = monthCatRecords.length;
-
-      hideDonutPanel();
-      renderBarChart(
-        monthCatRecords.map(r => r.date),
-        monthCatRecords.map(r => isInc ? r.amtInCredit : r.amountXpns),
-        `${targetCategory} (₹)`
-      );
-      lastQueryContributingRecords = monthCatRecords;
-      renderContributingTable(monthCatRecords);
-      logQueryAudit(rawQ, el.answerHeadline.textContent, isInc ? 0 : totalAmt, isInc ? totalAmt : 0, monthCatRecords.length);
-      return;
-    }
-
-    // --- CASE 2: Comparison between two months ("Feb vs Apr rashan") ---
+    // =========================================================================
+    // CASE 5: COMPARISON BETWEEN TWO MONTHS (e.g. "Feb vs Apr rashan")
+    // =========================================================================
     if (foundMonths.length === 2) {
       const m1 = foundMonths[0];
       const m2 = foundMonths[1];
@@ -916,7 +2094,6 @@
       el.queryKpiIncome.textContent = `₹${sum2.toLocaleString('en-IN')}`;
       el.queryKpiCount.textContent = r1.length + r2.length;
 
-      hideDonutPanel();
       renderComparisonChart([`${m1} ${targetCategory || ''}`, `${m2} ${targetCategory || ''}`], [sum1, sum2]);
       lastQueryContributingRecords = [...r1, ...r2];
       renderContributingTable(lastQueryContributingRecords);
@@ -925,37 +2102,9 @@
       return;
     }
 
-    // --- CASE 3: Rental Income query ---
-    if (/rental|kiraya/i.test(q) || (targetCategory === 'Income' && /rent/i.test(q))) {
-      const rentalRecords = ledgerRecords.filter(r => 
-        (r.amtInCredit > 0) && (r.category === 'Income' || r.category === 'Rental' || /rent|rajeev|charan/i.test(r.item))
-      );
-
-      let finalRecords = rentalRecords;
-      let monthLabel = 'All-Time';
-      if (foundMonths.length === 1) {
-        monthLabel = foundMonths[0];
-        finalRecords = rentalRecords.filter(r => (r.month || '').toLowerCase() === foundMonths[0].toLowerCase());
-      }
-
-      const totalRent = finalRecords.reduce((a, b) => a + b.amtInCredit, 0);
-      el.answerHeadline.textContent = `${monthLabel} Rental Income: ₹${totalRent.toLocaleString('en-IN')}`;
-      el.answerSubtext.textContent = `Calculated deterministically from ${finalRecords.length} tenant credit transactions.`;
-
-      el.queryKpiExpense.textContent = '₹0';
-      el.queryKpiIncome.textContent = `₹${totalRent.toLocaleString('en-IN')}`;
-      el.queryKpiCount.textContent = finalRecords.length;
-
-      hideDonutPanel();
-      renderBarChart(finalRecords.map(r => r.date), finalRecords.map(r => r.amtInCredit), 'Rental Income');
-      lastQueryContributingRecords = finalRecords;
-      renderContributingTable(finalRecords);
-
-      logQueryAudit(rawQ, el.answerHeadline.textContent, 0, totalRent, finalRecords.length);
-      return;
-    }
-
-    // --- CASE 4: Account spending query ("PNB se kitna spend hua?") ---
+    // =========================================================================
+    // CASE 6: ACCOUNT SPENDING QUERY (e.g. "PNB se kitna spend hua?")
+    // =========================================================================
     if (targetAccount) {
       const accRecords = ledgerRecords.filter(r => 
         (r.expenseAcc && r.expenseAcc.toLowerCase().includes(targetAccount.toLowerCase())) ||
@@ -965,26 +2114,46 @@
       const exp = accRecords.reduce((a, b) => a + (b.amountXpns || 0), 0);
       const inc = accRecords.reduce((a, b) => a + (b.amtInCredit || 0), 0);
 
+      // Group categories spent from this account for Donut visual!
+      const catMap = {};
+      accRecords.filter(r => (r.amountXpns || 0) > 0).forEach(r => {
+        const c = r.category || 'misc expn';
+        catMap[c] = (catMap[c] || 0) + r.amountXpns;
+      });
+      const sortedCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+
       el.answerHeadline.textContent = `${targetAccount} Account: ₹${exp.toLocaleString('en-IN')} Spent`;
-      el.answerSubtext.textContent = `Total Inflow: ₹${inc.toLocaleString('en-IN')} across ${accRecords.length} recorded operations.`;
+      el.answerSubtext.textContent = `Total Inflow: ₹${inc.toLocaleString('en-IN')} across ${accRecords.length} operations.`;
 
       el.queryKpiExpense.textContent = `₹${exp.toLocaleString('en-IN')}`;
       el.queryKpiIncome.textContent = `₹${inc.toLocaleString('en-IN')}`;
       el.queryKpiCount.textContent = accRecords.length;
 
-      hideDonutPanel();
-      renderComparisonChart([`${targetAccount} Outflow`, `${targetAccount} Inflow`], [exp, inc]);
+      if (sortedCats.length > 0) {
+        renderInteractiveDonut(sortedCats, accRecords, {
+          centerLabel: `${targetAccount} EXP`,
+          amountColor: '#fb7185'
+        });
+      } else {
+        renderComparisonChart([`${targetAccount} Outflow`, `${targetAccount} Inflow`], [exp, inc]);
+      }
+
       lastQueryContributingRecords = accRecords;
       renderContributingTable(accRecords);
-
       logQueryAudit(rawQ, el.answerHeadline.textContent, exp, inc, accRecords.length);
       return;
     }
 
-    // --- CASE 5: General Category, Month, or Freeform Keyword Query (e.g. "Netflix") ---
+    // =========================================================================
+    // CASE 7: ITEM KEYWORD / FREEFORM / PERSONA QUERY (e.g. "Netflix", "Monthly dudh")
+    // =========================================================================
     let matching = [...ledgerRecords];
-    if (targetCategory) matching = matching.filter(r => r.category.toLowerCase() === targetCategory.toLowerCase());
-    if (foundMonths.length === 1) matching = matching.filter(r => (r.month || '').toLowerCase() === foundMonths[0].toLowerCase());
+    if (foundMonths.length === 1) {
+      matching = matching.filter(r => (r.month || '').toLowerCase() === foundMonths[0].toLowerCase());
+    }
+    if (targetCategory) {
+      matching = matching.filter(r => r.category.toLowerCase() === targetCategory.toLowerCase());
+    }
 
     const cleanedKeywords = q
       .replace(/batao|kitna|hai|ka|ke|ki|karo|dikhao|total|all[- ]time|expense|income|spend|hua|search|please|expenses|category|categories/gi, ' ')
@@ -994,7 +2163,7 @@
 
     if (cleanedKeywords.length > 0 && !targetCategory) {
       matching = matching.filter(r => {
-        const fullSearchBlob = `${r.item || ''} ${r.note || ''} ${r.category || ''} ${r.expenseAcc || ''} ${r.incomeAccnt || ''} ${r.forEntity || ''}`.toLowerCase();
+        const fullSearchBlob = `${r.item || ''} ${r.note || ''} ${r.category || ''} ${r.expenseAcc || ''} ${r.incomeAccnt || ''} ${r.forEntity || ''} ${r.by || ''}`.toLowerCase();
         return cleanedKeywords.some(kw => fullSearchBlob.includes(kw));
       });
     }
@@ -1016,15 +2185,57 @@
     el.queryKpiIncome.textContent = `₹${inc.toLocaleString('en-IN')}`;
     el.queryKpiCount.textContent = matching.length;
 
-    hideDonutPanel();
-    renderBarChart(matching.slice(0, 10).map(r => r.date), matching.slice(0, 10).map(r => r.amountXpns || r.amtInCredit), 'Amount (₹)');
+    // Check if matching transactions span multiple categories
+    const catMap = {};
+    matching.forEach(r => {
+      const c = r.category || 'misc expn';
+      const amt = r.amountXpns || r.amtInCredit || 0;
+      catMap[c] = (catMap[c] || 0) + amt;
+    });
+    const sortedCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+
+    if (sortedCats.length > 1) {
+      renderInteractiveDonut(sortedCats, matching, {
+        centerLabel: 'SEARCH RESULT'
+      });
+    } else {
+      renderBarChart(matching.slice(0, 15).map(r => r.date), matching.slice(0, 15).map(r => r.amountXpns || r.amtInCredit), 'Amount (₹)');
+    }
+
     lastQueryContributingRecords = matching;
     renderContributingTable(matching);
-
     logQueryAudit(rawQ, el.answerHeadline.textContent, exp, inc, matching.length);
   }
 
   // --- 12. CHART.JS & DONUT DRILL-DOWN VISUALIZATIONS ---
+  const centerTextPlugin = {
+    id: 'centerTextPlugin',
+    beforeDraw: function(chart) {
+      if (chart.config.type !== 'doughnut') return;
+      const centerText = chart.config.options?.plugins?.centerText;
+      if (!centerText || !centerText.text) return;
+
+      const ctx = chart.ctx;
+      const { top, bottom, left, right } = chart.chartArea;
+      const centerX = (left + right) / 2;
+      const centerY = (top + bottom) / 2;
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      ctx.font = '600 10px Inter, -apple-system, sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(centerText.label || 'TOTAL', centerX, centerY - 11);
+
+      ctx.font = '700 15px JetBrains Mono, monospace';
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillText(centerText.text, centerX, centerY + 11);
+
+      ctx.restore();
+    }
+  };
+
   function destroyPreviousChart() {
     if (queryChartInstance) {
       queryChartInstance.destroy();
@@ -1038,16 +2249,20 @@
     activeCategoryFilter = null;
   }
 
-  function renderInteractiveDonut(sortedCategories, fullTxList) {
+  function renderInteractiveDonut(sortedCategories, fullTxList, options = {}) {
     destroyPreviousChart();
     el.queryChartContainer.classList.remove('hidden');
     el.queryDonutCategoryPanel.classList.remove('hidden');
 
-    const totalExp = sortedCategories.reduce((a, b) => a + b[1], 0);
-    const topCategories = sortedCategories.slice(0, 8);
+    const totalAmt = sortedCategories.reduce((a, b) => a + b[1], 0);
+    const topCategories = sortedCategories.slice(0, 9);
     const labels = topCategories.map(c => c[0]);
     const data = topCategories.map(c => c[1]);
-    const colors = ['#f43f5e', '#38bdf8', '#34d399', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4', '#eab308'];
+    const colors = [
+      '#f43f5e', '#38bdf8', '#34d399', '#f59e0b', 
+      '#a855f7', '#ec4899', '#06b6d4', '#eab308',
+      '#6366f1', '#10b981', '#f97316'
+    ];
 
     const ctx = el.queryChartCanvas.getContext('2d');
     queryChartInstance = new Chart(ctx, {
@@ -1058,20 +2273,38 @@
           data: data,
           backgroundColor: colors.slice(0, data.length),
           borderWidth: 2,
-          borderColor: '#0b1120'
+          borderColor: '#0b1120',
+          hoverOffset: 6
         }]
       },
+      plugins: [centerTextPlugin],
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 10 } } }
+          legend: { 
+            position: 'bottom', 
+            labels: { color: '#cbd5e1', font: { size: 10, family: 'Inter' }, boxWidth: 12 } 
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const val = context.raw || 0;
+                const pct = totalAmt > 0 ? ((val / totalAmt) * 100).toFixed(1) : 0;
+                return ` ${context.label}: ₹${val.toLocaleString('en-IN')} (${pct}%)`;
+              }
+            }
+          },
+          centerText: {
+            label: options.centerLabel || 'TOTAL',
+            text: `₹${totalAmt.toLocaleString('en-IN')}`
+          }
         },
         onClick: (evt, activeEls) => {
           if (activeEls && activeEls.length > 0) {
             const clickedIdx = activeEls[0].index;
             const clickedCat = labels[clickedIdx];
-            applyCategoryDrillDown(clickedCat, fullTxList);
+            applyCategoryDrillDown(clickedCat, fullTxList, options.filterField);
           }
         }
       }
@@ -1080,27 +2313,30 @@
     // Populate Category Breakdown Cards (Mobile Dashboard style)
     el.queryCatBreakdownGrid.innerHTML = '';
     sortedCategories.forEach(([catName, catAmt], i) => {
-      const pct = totalExp > 0 ? ((catAmt / totalExp) * 100).toFixed(1) : 0;
+      const pct = totalAmt > 0 ? ((catAmt / totalAmt) * 100).toFixed(1) : 0;
       const card = document.createElement('div');
       card.className = 'cat-breakdown-card';
+      if (options.preselectedCategory && catName.toLowerCase() === options.preselectedCategory.toLowerCase()) {
+        card.classList.add('active');
+      }
       card.setAttribute('data-category', catName);
       card.innerHTML = `
         <div class="cat-card-header">
           <span style="font-weight: 600; color: #f8fafc;">#${i + 1} ${escapeHtml(catName)}</span>
           <span>${pct}%</span>
         </div>
-        <div class="cat-card-amount">₹${catAmt.toLocaleString('en-IN')}</div>
+        <div class="cat-card-amount">${options.amountColor ? `<span style="color: ${options.amountColor};">` : ''}₹${catAmt.toLocaleString('en-IN')}${options.amountColor ? '</span>' : ''}</div>
       `;
 
       card.addEventListener('click', () => {
-        applyCategoryDrillDown(catName, fullTxList);
+        applyCategoryDrillDown(catName, fullTxList, options.filterField);
       });
 
       el.queryCatBreakdownGrid.appendChild(card);
     });
   }
 
-  function applyCategoryDrillDown(categoryName, fullTxList) {
+  function applyCategoryDrillDown(categoryName, fullTxList, filterField = 'category') {
     activeCategoryFilter = categoryName;
 
     // Highlight card
@@ -1113,13 +2349,75 @@
     if (el.activeGridFilterLabel) el.activeGridFilterLabel.textContent = `Filtered by: ${categoryName}`;
 
     // Filter table below
-    const catRecords = fullTxList.filter(r => (r.category || '').toLowerCase() === categoryName.toLowerCase());
-    renderContributingTable(catRecords);
+    let filtered = fullTxList;
+    if (filterField === 'tenant') {
+      filtered = fullTxList.filter(r => getTenantLabel(r).toLowerCase() === categoryName.toLowerCase());
+    } else {
+      filtered = fullTxList.filter(r => (r.category || '').toLowerCase() === categoryName.toLowerCase());
+    }
+    renderContributingTable(filtered);
+  }
+
+  function renderInflowOutflowBar(outflow, inflow, rentalInflow, netBalance) {
+    destroyPreviousChart();
+    el.queryChartContainer.classList.remove('hidden');
+    hideDonutPanel();
+
+    const labels = ['Outflow (Expenses)', 'Total Inflow', 'Rental Inflow', 'Net Balance'];
+    const data = [outflow, inflow, rentalInflow, Math.max(0, netBalance)];
+    const bgColors = [
+      'rgba(244, 63, 94, 0.85)',
+      'rgba(52, 211, 153, 0.85)',
+      'rgba(56, 189, 248, 0.85)',
+      netBalance >= 0 ? 'rgba(99, 102, 241, 0.85)' : 'rgba(239, 68, 68, 0.85)'
+    ];
+    const borderColors = ['#f43f5e', '#34d399', '#38bdf8', '#6366f1'];
+
+    const ctx = el.queryChartCanvas.getContext('2d');
+    queryChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Amount (₹)',
+          data: data,
+          backgroundColor: bgColors,
+          borderColor: borderColors,
+          borderWidth: 1.5,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(c) {
+                return ` ${c.label}: ₹${c.raw.toLocaleString('en-IN')}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#cbd5e1', font: { size: 10 } } },
+          y: { 
+            grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+            ticks: { 
+              color: '#94a3b8',
+              callback: function(v) { return '₹' + v.toLocaleString('en-IN'); }
+            } 
+          }
+        }
+      }
+    });
   }
 
   function renderComparisonChart(labels, data) {
     destroyPreviousChart();
     el.queryChartContainer.classList.remove('hidden');
+    hideDonutPanel();
 
     const ctx = el.queryChartCanvas.getContext('2d');
     queryChartInstance = new Chart(ctx, {
@@ -1150,6 +2448,7 @@
   function renderBarChart(labels, data, datasetLabel) {
     destroyPreviousChart();
     el.queryChartContainer.classList.remove('hidden');
+    hideDonutPanel();
 
     const ctx = el.queryChartCanvas.getContext('2d');
     queryChartInstance = new Chart(ctx, {
@@ -1181,7 +2480,7 @@
     el.queryResultsTableBody.innerHTML = '';
     el.queryTableCount.textContent = records.length;
 
-    records.slice(0, 75).forEach(r => {
+    records.slice(0, 100).forEach(r => {
       const tr = document.createElement('tr');
       const amt = (r.amtInCredit > 0 ? r.amtInCredit : r.amountXpns) || 0;
       const amtColor = r.amtInCredit > 0 ? '#34d399' : '#fb7185';
@@ -1481,6 +2780,64 @@
       el.btnClearCatFilter.addEventListener('click', () => {
         hideDonutPanel();
         renderContributingTable(lastQueryContributingRecords);
+      });
+    }
+
+    // Chart Switcher (Donut vs Comparison Bar)
+    if (el.btnViewDonut) {
+      el.btnViewDonut.addEventListener('click', () => {
+        if (!lastQueryCompoundData) return;
+        el.btnViewDonut.classList.add('active');
+        if (el.btnViewBar) el.btnViewBar.classList.remove('active');
+        renderInteractiveDonut(lastQueryCompoundData.sortedCats, lastQueryCompoundData.outflowRecs, {
+          centerLabel: `${lastQueryCompoundData.monthLabel} EXP`,
+          amountColor: '#fb7185'
+        });
+      });
+    }
+
+    if (el.btnViewBar) {
+      el.btnViewBar.addEventListener('click', () => {
+        if (!lastQueryCompoundData) return;
+        el.btnViewBar.classList.add('active');
+        if (el.btnViewDonut) el.btnViewDonut.classList.remove('active');
+        renderInflowOutflowBar(
+          lastQueryCompoundData.totalOutflow,
+          lastQueryCompoundData.totalInflow,
+          lastQueryCompoundData.totalRental,
+          lastQueryCompoundData.netBalance
+        );
+      });
+    }
+
+    // Table Filter Switcher (All vs Outflow vs Inflow)
+    if (el.btnTblAll) {
+      el.btnTblAll.addEventListener('click', () => {
+        if (!lastQueryCompoundData) return;
+        el.btnTblAll.classList.add('active');
+        if (el.btnTblExp) el.btnTblExp.classList.remove('active');
+        if (el.btnTblIn) el.btnTblIn.classList.remove('active');
+        renderContributingTable(lastQueryCompoundData.allRecs);
+      });
+    }
+
+    if (el.btnTblExp) {
+      el.btnTblExp.addEventListener('click', () => {
+        if (!lastQueryCompoundData) return;
+        el.btnTblExp.classList.add('active');
+        if (el.btnTblAll) el.btnTblAll.classList.remove('active');
+        if (el.btnTblIn) el.btnTblIn.classList.remove('active');
+        renderContributingTable(lastQueryCompoundData.outflowRecs);
+      });
+    }
+
+    if (el.btnTblIn) {
+      el.btnTblIn.addEventListener('click', () => {
+        if (!lastQueryCompoundData) return;
+        el.btnTblIn.classList.add('active');
+        if (el.btnTblAll) el.btnTblAll.classList.remove('active');
+        if (el.btnTblExp) el.btnTblExp.classList.remove('active');
+        renderContributingTable(lastQueryCompoundData.inflowRecs);
       });
     }
 

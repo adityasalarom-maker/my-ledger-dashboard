@@ -193,11 +193,12 @@
         <div class="search-chip-group">
           <button type="button" class="query-chip" data-query="last month ke expense list do">🍩 Last Month Expenses</button>
           <button type="button" class="query-chip" data-query="Batao total rental income kitni hai?">🏠 Total Rental Income</button>
-          <button type="button" class="query-chip" data-query="March ka total rental income batao">📅 March Rental Income</button>
-          <button type="button" class="query-chip" data-query="Rashan category ka total all-time kitna hai?">🛒 All-Time Rashan</button>
+          <button type="button" class="query-chip" data-query="Aug me rental income and expenses batao">📅 Aug Rental Income & Expenses</button>
+          <button type="button" class="query-chip" data-query="March misc expenses">🛒 March Misc Expenses</button>
+          <button type="button" class="query-chip" data-query="Rashan category ka total all-time kitna hai?">🛍️ All-Time Rashan</button>
           <button type="button" class="query-chip" data-query="February aur April ka rashan expense compare karo">⚖️ Feb vs Apr Rashan</button>
           <button type="button" class="query-chip" data-query="PNB se kitna spend hua?">💳 PNB Account Spending</button>
-          <button type="button" class="query-chip" data-query="Netflix recharges dikhao">🎬 Netflix Recharges</button>
+          <button type="button" class="query-chip" data-query="Monthly dudh kitna hua">🥛 Monthly Dudh</button>
           <button type="button" class="query-chip" data-query="Category-wise expenses dikhao">📊 Category-Wise Expenses</button>
         </div>
       </div>
@@ -225,6 +226,16 @@
               <span class="metric-label">Transactions</span>
               <span class="metric-value" id="queryKpiCount">0</span>
             </div>
+            <div class="kpi-box hidden" id="queryKpiNetBox">
+              <span class="metric-label" id="queryKpiNetLabel">Net Balance</span>
+              <span class="metric-value text-cyan" id="queryKpiNet" style="color: #38bdf8;">₹0</span>
+            </div>
+          </div>
+
+          <!-- Chart View Switcher (when both Donut & Bar available) -->
+          <div id="queryChartSwitcher" class="hidden" style="display: flex; gap: 0.4rem; justify-content: center; margin: 0.4rem 0;">
+            <button type="button" class="mode-pill active" id="btnViewDonut">🍩 Donut Visual</button>
+            <button type="button" class="mode-pill" id="btnViewBar">📊 Comparison / Trend</button>
           </div>
 
           <!-- Interactive Visualization Chart -->
@@ -245,11 +256,18 @@
 
           <!-- Contributing Transactions Table -->
           <div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.4rem;">
               <h4 style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary);">
                 📋 Contributing Ledger Records (<span id="queryTableCount">0</span>)
               </h4>
               <span id="activeGridFilterLabel" style="font-size: 0.72rem; color: var(--cyan); font-weight: 600;"></span>
+            </div>
+
+            <!-- Table Filter Switcher (for Compound Queries) -->
+            <div id="queryTablePillGroup" class="hidden" style="display: flex; gap: 0.35rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+              <button type="button" class="mode-pill active" id="btnTblAll">All (<span id="countTblAll">0</span>)</button>
+              <button type="button" class="mode-pill" id="btnTblExp">Outflow (<span id="countTblExp">0</span>)</button>
+              <button type="button" class="mode-pill" id="btnTblIn">Inflow (<span id="countTblIn">0</span>)</button>
             </div>
             <div class="review-table-wrapper" style="max-height: 280px; overflow-y: auto;">
               <table class="review-table" id="queryResultsTable">
