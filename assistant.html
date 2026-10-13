@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta name="theme-color" content="#060910">
+  <meta name="description" content="Ledger Intelligence Assistant - Natural-Language Entry & Financial Query Engine for Personal Ledger">
+  <!-- Content Security Policy: Whitelist only trusted origins -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://docs.google.com;">
+  <title>Ledger Intelligence Assistant | Natural-Language Entry & Query Engine</title>
+
+  <!-- Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="assistant.css?v=20261013_v1">
+</head>
+<body>
+  <div class="assistant-shell">
+
+    <!-- 1. HEADER -->
+    <header class="assistant-header">
+      <div class="brand-wrap">
+        <span class="brand-icon">⚡</span>
+        <div>
+          <h1 class="brand-title">Ledger Intelligence Assistant</h1>
+          <p class="brand-subtitle" id="syncStatusSubtitle">w LEDGER 2026 n • Zero Quota Overhead</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="mobile.html" class="btn-header" title="Open Mobile Ledger Dashboard">
+          📊 Main Dashboard
+        </a>
+      </div>
+    </header>
+
+    <!-- 2. NAVIGATION TABS -->
+    <nav class="assistant-nav-tabs" aria-label="Assistant Modules">
+      <button class="nav-tab-btn active" data-tab="tabQuickAdd">
+        ✍️ Quick Add
+      </button>
+      <button class="nav-tab-btn" data-tab="tabAskLedger">
+        💬 Ask My Ledger
+      </button>
+      <button class="nav-tab-btn" data-tab="tabSyncSettings">
+        ⚙️ Sync & Key
+      </button>
+    </nav>
+
+    <!-- ========================================================================= -->
+    <!-- MODULE A: ✍️ QUICK ADD — NATURAL LANGUAGE ENTRY                           -->
+    <!-- ========================================================================= -->
+    <section class="tab-section active" id="tabQuickAdd">
+      <div class="glass-card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">📝 Raw Informal Transaction Notes</h2>
+            <p class="card-subtitle">Paste multiline notes in English or Hinglish (amounts, dates, items, shorthand like 3k, 1.2k)</p>
+          </div>
+          <button type="button" id="btnLoadSampleNotes" class="btn-secondary" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;">
+            📋 Load Sample Notes
+          </button>
+        </div>
+
+        <textarea id="rawNotesInput" class="raw-textarea" placeholder="Paste informal transactions here, for example:
+13 oct (3k rajeev charan rent pnb)
+100 - brush
+1 oct
+60 - diya, phul mala
+120 - hawan mitti tasla
+230 - trishaa parcel
+180-1.5kg seb
+160 - 40- Tkg tamatar, 20- dhaniya, 1pav adrak
+40, 60- 1kg khira
+o/1 0 oct
+1.2k- ma
+840- sidha pitra puja
+250- dkashna
+- 120- mata murti + 280+50 ( puja saman) ma
+  1870 - Trisha yoga bar, puja saman etc"></textarea>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem;">
+          <button type="button" id="btnClearNotes" class="btn-secondary">Clear</button>
+          <button type="button" id="btnParseNotes" class="btn-primary">
+            ⚡ Parse & Validate Entries
+          </button>
+        </div>
+      </div>
+
+      <!-- REVIEW & CONFIRMATION INTERFACE -->
+      <div class="glass-card hidden" id="reviewPanel">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">🔍 Structured Batch Review & Validation</h3>
+            <p class="card-subtitle">Review, edit fields, and resolve ambiguous items before writing to Google Sheets</p>
+          </div>
+          <span id="batchValidationBadge" class="confidence-badge confidence-high">Ready for Review</span>
+        </div>
+
+        <!-- Batch Summary Bar -->
+        <div class="batch-summary-bar">
+          <div class="summary-metric">
+            <span class="metric-label">Parsed Rows</span>
+            <span class="metric-value" id="summaryCount">0</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-label">Total Outflow</span>
+            <span class="metric-value" style="color: #fb7185;" id="summaryExpense">₹0</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-label">Total Inflow</span>
+            <span class="metric-value" style="color: #34d399;" id="summaryIncome">₹0</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-label">Attention Needed</span>
+            <span class="metric-value" style="color: #f59e0b;" id="summaryAmbiguous">0</span>
+          </div>
+        </div>
+
+        <!-- Duplicate Warning Alert Box -->
+        <div id="duplicateAlertBox" class="hidden" style="background: rgba(245, 158, 11, 0.12); border: 1px dashed #f59e0b; border-radius: 0.55rem; padding: 0.65rem 0.85rem; margin-bottom: 0.85rem; font-size: 0.78rem; color: #fbbf24;">
+          ⚠️ <strong>Potential Duplicate Notice:</strong> One or more items match existing transactions in your ledger. Review highlighted rows before confirming.
+        </div>
+
+        <!-- Editable Review Table -->
+        <div class="review-table-wrapper">
+          <table class="review-table" id="reviewTable">
+            <thead>
+              <tr>
+                <th style="width: 100px;">Date</th>
+                <th>Description</th>
+                <th style="width: 90px;">Amount (₹)</th>
+                <th style="width: 85px;">Type</th>
+                <th style="width: 110px;">Category</th>
+                <th style="width: 110px;">Account</th>
+                <th style="width: 75px;">For</th>
+                <th style="width: 75px;">Confidence</th>
+                <th style="width: 40px;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="reviewTableBody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Review Actions -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+          <button type="button" id="btnDiscardDraft" class="btn-secondary">
+            🗑️ Discard Draft
+          </button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" id="btnAddManualRow" class="btn-secondary">
+              ➕ Add Blank Row
+            </button>
+            <button type="button" id="btnConfirmBatch" class="btn-success">
+              💾 Confirm & Append to Google Sheets
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- MODULE B: 💬 ASK MY LEDGER — FINANCIAL QUERY ENGINE                       -->
+    <!-- ========================================================================= -->
+    <section class="tab-section" id="tabAskLedger">
+      <div class="glass-card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">💬 Ask My Ledger</h2>
+            <p class="card-subtitle">Natural-language financial questions in English or Hinglish with 100% deterministic calculations</p>
+          </div>
+        </div>
+
+        <div class="query-input-wrap">
+          <input type="text" id="nlQueryInput" class="query-input" placeholder="e.g., Batao total rental income kitni hai? or March rashan compare...">
+          <button type="button" id="btnAskQuery" class="btn-primary">Ask 💬</button>
+        </div>
+
+        <!-- Quick Query Chips -->
+        <div class="search-chip-group">
+          <button type="button" class="query-chip" data-query="Batao total rental income kitni hai?">🏠 Total Rental Income</button>
+          <button type="button" class="query-chip" data-query="March ka total rental income batao">📅 March Rental Income</button>
+          <button type="button" class="query-chip" data-query="Rashan category ka total all-time kitna hai?">🛒 All-Time Rashan</button>
+          <button type="button" class="query-chip" data-query="February aur April ka rashan expense compare karo">⚖️ Feb vs Apr Rashan</button>
+          <button type="button" class="query-chip" data-query="Is month ka total expense aur income batao">📊 Current Month Net Flow</button>
+          <button type="button" class="query-chip" data-query="PNB se kitna spend hua?">💳 PNB Account Spending</button>
+          <button type="button" class="query-chip" data-query="Category-wise expenses dikhao">🍩 Category-Wise Expenses</button>
+          <button type="button" class="query-chip" data-query="Last three months ka monthly expense trend dikhao">📈 3-Month Trend</button>
+        </div>
+      </div>
+
+      <!-- Query Output Area -->
+      <div class="glass-card hidden" id="queryResultCard">
+        <div class="result-card">
+          <!-- Headline Answer -->
+          <div class="headline-answer">
+            <h3 class="answer-lead" id="answerHeadline">Calculating...</h3>
+            <p class="answer-subtext" id="answerSubtext">Based on authorized ledger transactions.</p>
+          </div>
+
+          <!-- KPI Metrics Row -->
+          <div class="kpi-row" id="queryKpiRow">
+            <div class="kpi-box">
+              <span class="metric-label">Total Outflow</span>
+              <span class="metric-value text-rose-400" id="queryKpiExpense" style="color: #fb7185;">₹0</span>
+            </div>
+            <div class="kpi-box">
+              <span class="metric-label">Total Inflow</span>
+              <span class="metric-value text-emerald-400" id="queryKpiIncome" style="color: #34d399;">₹0</span>
+            </div>
+            <div class="kpi-box">
+              <span class="metric-label">Transactions</span>
+              <span class="metric-value" id="queryKpiCount">0</span>
+            </div>
+          </div>
+
+          <!-- Interactive Visualization Chart -->
+          <div id="queryChartContainer" class="hidden" style="position: relative; height: 260px; width: 100%; margin: 0.5rem 0;">
+            <canvas id="queryChartCanvas"></canvas>
+          </div>
+
+          <!-- Contributing Transactions Table -->
+          <div>
+            <h4 style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;">
+              📋 Contributing Ledger Records (<span id="queryTableCount">0</span>)
+            </h4>
+            <div class="review-table-wrapper" style="max-height: 240px; overflow-y: auto;">
+              <table class="review-table" id="queryResultsTable">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Item Description</th>
+                    <th>Category</th>
+                    <th style="text-align: right;">Amount (₹)</th>
+                    <th>Account</th>
+                    <th>For</th>
+                  </tr>
+                </thead>
+                <tbody id="queryResultsTableBody">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- MODULE C: ⚙️ SYNC & SECURITY SETTINGS                                     -->
+    <!-- ========================================================================= -->
+    <section class="tab-section" id="tabSyncSettings">
+      <div class="glass-card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">🔐 Google Sheets Gateway & Passkey</h2>
+            <p class="card-subtitle">Connects to your restricted Google Sheet via authenticated Apps Script</p>
+          </div>
+          <button type="button" id="btnSyncNow" class="btn-primary" style="font-size: 0.78rem; padding: 0.45rem 0.85rem;">
+            🔄 Sync Live Data
+          </button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.85rem; margin-top: 0.5rem;">
+          <div>
+            <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Google Apps Script Web App URL:</label>
+            <input type="url" id="assistantGasUrl" class="table-input font-mono" value="https://script.google.com/macros/s/AKfycbz5Een-L-ggrYaFtoyuRRePZzMXM2jXNih9fFVvbsUUl8389oceEyNUG8JJGlC_RKHpYQ/exec">
+          </div>
+
+          <div>
+            <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Secret Passkey:</label>
+            <div style="display: flex; gap: 0.4rem;">
+              <input type="password" id="assistantPasskey" class="table-input font-mono" value="Ledger2026!SecureKey">
+              <button type="button" id="btnSaveAssistantKey" class="btn-secondary" style="white-space: nowrap;">Save Key</button>
+            </div>
+          </div>
+
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 0.55rem; padding: 0.75rem; font-size: 0.75rem; color: #a7f3d0;">
+            🛡️ <strong>Zero Quota Consumption Guarantee:</strong>
+            <p style="margin-top: 0.25rem; color: var(--text-secondary); line-height: 1.5;">
+              Local client-side caching operates 100% within your device's browser memory (Web Storage). It does NOT call external AI APIs for caching or aggregation, consuming 0 tokens and incurring 0 cost against Gemini AI Pro limits.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOAST NOTIFICATION -->
+    <div class="assistant-toast hidden" id="assistantToast"></div>
+
+  </div>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Fallback Offline Dataset -->
+  <script src="ledger-data.js"></script>
+  <!-- Dedicated Assistant Logic -->
+  <script src="assistant.js"></script>
+</body>
+</html>
