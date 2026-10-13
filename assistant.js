@@ -43,6 +43,7 @@
 
   const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbz5Een-L-ggrYaFtoyuRRePZzMXM2jXNih9fFVvbsUUl8389oceEyNUG8JJGlC_RKHpYQ/exec';
   const DEFAULT_PASSKEY = 'Ledger2026!SecureKey';
+  const LEDGER_SHEET_ID = '1uocVkm6qYpuM6zxhv2Hs8tHM-OthlTSOdxBZiRDWziE';
 
   // --- 3. APPLICATION STATE ---
   let ledgerRecords = [];
@@ -50,6 +51,7 @@
   let queryChartInstance = null;
   let activeCategoryFilter = null;
   let currentReviewFilter = 'ALL'; // 'ALL' or 'ATTENTION'
+  let currentHistoryFilter = 'ALL'; // 'ALL', 'HOURLY', 'DAILY'
   let lastQueryContributingRecords = [];
 
   // --- 4. DOM ELEMENT REFERENCES ---
@@ -97,6 +99,11 @@
     queryHistoryList: document.getElementById('queryHistoryList'),
     btnCopyQueryHistory: document.getElementById('btnCopyQueryHistory'),
     btnClearQueryHistory: document.getElementById('btnClearQueryHistory'),
+    btnHistFilterAll: document.getElementById('btnHistFilterAll'),
+    btnHistFilterHourly: document.getElementById('btnHistFilterHourly'),
+    btnHistFilterDaily: document.getElementById('btnHistFilterDaily'),
+    histCountAll: document.getElementById('histCountAll'),
+    historyActiveViewLabel: document.getElementById('historyActiveViewLabel'),
     assistantGasUrl: document.getElementById('assistantGasUrl'),
     assistantPasskey: document.getElementById('assistantPasskey'),
     btnSaveAssistantKey: document.getElementById('btnSaveAssistantKey'),
@@ -128,9 +135,9 @@
   }
 
   function loadSavedSettings() {
-    const savedUrl = localStorage.getItem('LEDGER_GAS_URL');
+    const savedUrl = localStorage.getItem('gas_webapp_url') || localStorage.getItem('LEDGER_GAS_URL');
     if (savedUrl && el.assistantGasUrl) el.assistantGasUrl.value = savedUrl;
-    const savedKey = localStorage.getItem('LEDGER_PASSKEY');
+    const savedKey = localStorage.getItem('ledger_auth_key') || localStorage.getItem('LEDGER_PASSKEY');
     if (savedKey && el.assistantPasskey) el.assistantPasskey.value = savedKey;
   }
 
@@ -141,56 +148,95 @@
     setTimeout(() => el.toast.classList.add('hidden'), duration);
   }
 
-  // --- 6. DATA INGESTION & LOCAL CACHE ---
-  function loadLedgerData() {
-    // 1. Check local storage cache
-    const cachedData = localStorage.getItem('LEDGER_DATA_CACHE_V2') || localStorage.getItem('LEDGER_ENCRYPTED_CACHE_V1');
-    if (cachedData) {
-      try {
-        const parsed = JSON.parse(cachedData);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          ledgerRecords = normalizeRecords(parsed);
-          updateSyncSubtitle(ledgerRecords.length, 'Loaded from secure local cache');
-          return;
+  // Dynamic Array Taxonomies Merge (Learned from ARRAY Tab)
+  function mergeTaxonomies(arrayTab) {
+    if (!arrayTab || typeof arrayTab !== 'object') return;
+    const catList = arrayTab['Category'] || arrayTab['Cat'] || arrayTab['Categories'] || [];
+    if (Array.isArray(catList)) {
+      catList.forEach(c => {
+        const trimmed = String(c).trim();
+        if (trimmed && !MASTER_CATEGORIES.includes(trimmed)) {
+          MASTER_CATEGORIES.push(trimmed);
         }
-      } catch (e) {
-        console.warn('Cache parse error:', e);
-      }
+      });
+    }
+  }
+
+  // --- 6. DATA INGESTION & SHARED LOCAL CACHE ---
+  function loadLedgerData() {
+    // 1. Primary Check: Shared mobile dashboard cache (sheet2)
+    let rawList = null;
+    const cachedSheet2 = localStorage.getItem('cached_ledger_sheet2');
+    const cachedV2 = localStorage.getItem('LEDGER_DATA_CACHE_V2');
+    const cachedSheet1 = localStorage.getItem('cached_ledger_sheet1');
+    const cachedV1 = localStorage.getItem('LEDGER_ENCRYPTED_CACHE_V1');
+
+    if (cachedSheet2) {
+      try { rawList = JSON.parse(cachedSheet2); } catch(e) {}
+    } else if (cachedV2) {
+      try { rawList = JSON.parse(cachedV2); } catch(e) {}
+    } else if (cachedSheet1) {
+      try { rawList = JSON.parse(cachedSheet1); } catch(e) {}
+    } else if (cachedV1) {
+      try { rawList = JSON.parse(cachedV1); } catch(e) {}
     }
 
-    // 2. Check window.LEDGER_DATA from ledger-data.js
+    // Merge cached ARRAY tab taxonomies
+    const cachedArrays = localStorage.getItem('cached_array_taxonomies');
+    if (cachedArrays) {
+      try { mergeTaxonomies(JSON.parse(cachedArrays)); } catch(e) {}
+    }
+
+    if (Array.isArray(rawList) && rawList.length > 5) {
+      ledgerRecords = normalizeRecords(rawList);
+      updateSyncSubtitle(ledgerRecords.length, 'Loaded from secure local cache');
+      return;
+    }
+
+    // 2. Fallback template data (5 rows)
     if (window.LEDGER_DATA && Array.isArray(window.LEDGER_DATA)) {
       ledgerRecords = normalizeRecords(window.LEDGER_DATA);
       updateSyncSubtitle(ledgerRecords.length, 'Loaded from fallback template');
     } else {
-      updateSyncSubtitle(0, 'No local records loaded. Tap Sync.');
+      updateSyncSubtitle(0, 'No local records loaded. Connecting live...');
     }
+
+    // Automatically trigger live sync in background if only template is present!
+    syncLiveData();
   }
 
   function normalizeRecords(rawList) {
     return rawList.map(r => {
-      const amtExp = parseFloat(r.amountXpns || r.amt_exp || (r.type === 'Expense' ? r.amount : 0) || 0);
-      const amtIn = parseFloat(r.amtInCredit || r.amt_in || (r.type === 'Income' ? r.amount : 0) || 0);
+      const amtExp = parseFloat(r.amt_exp !== undefined ? r.amt_exp : (r.amountXpns !== undefined ? r.amountXpns : (r.type === 'Expense' ? r.amount : 0)) || 0);
+      const amtIn = parseFloat(r.amt_in !== undefined ? r.amt_in : (r.amtInCredit !== undefined ? r.amtInCredit : (r.type === 'Income' ? r.amount : 0)) || 0);
       const desc = r.item || r.item_description || r.description || '';
       const date = r.date || '';
-      let month = r.month || '';
-      if (!month && date) {
-        const m = date.match(/[a-zA-Z]{3}/);
-        if (m) month = m[0];
+
+      // Clean and robust month extraction (resolves #REF! or empty values from sheet)
+      let month = String(r.month || '').trim();
+      if (!month || month.startsWith('#') || month.length > 5) {
+        if (date) {
+          const m = String(date).match(/[a-zA-Z]{3}/);
+          if (m) month = m[0];
+        }
       }
+      if (month && month.length >= 3) {
+        month = month.charAt(0).toUpperCase() + month.slice(1, 3).toLowerCase();
+      }
+
       return {
         date: date,
         month: month,
         by: r.by || 'Honey',
         forEntity: r.for || r.forEntity || 'Home',
         item: desc,
-        category: r.category || r.cat || 'misc expn',
+        category: r.cat || r.category || 'misc expn',
         amountXpns: amtExp,
         amtInCredit: amtIn,
-        expenseAcc: r.expenseAcc || r.exp_acc || r.account || '',
-        incomeAccnt: r.incomeAccnt || r.inc_acc || r.account || '',
-        note: r.note || r.info || '',
-        balance: r.balance || null
+        expenseAcc: r.exp_acc || r.expenseAcc || r.account || '',
+        incomeAccnt: r.inc_acc || r.incomeAccnt || r.account || '',
+        note: r.info || r.note || '',
+        balance: r.balance !== undefined ? r.balance : null
       };
     });
   }
@@ -202,28 +248,47 @@
 
   // --- 7. SECURE SYNC WITH APPS SCRIPT ---
   async function syncLiveData() {
-    const gasUrl = el.assistantGasUrl.value.trim() || DEFAULT_GAS_URL;
-    const passkey = el.assistantPasskey.value.trim() || DEFAULT_PASSKEY;
+    const gasUrl = (el.assistantGasUrl ? el.assistantGasUrl.value.trim() : '') || 
+      localStorage.getItem('gas_webapp_url') || 
+      localStorage.getItem('LEDGER_GAS_URL') || 
+      DEFAULT_GAS_URL;
+
+    const passkey = (el.assistantPasskey ? el.assistantPasskey.value.trim() : '') || 
+      localStorage.getItem('ledger_auth_key') || 
+      localStorage.getItem('LEDGER_PASSKEY') || 
+      DEFAULT_PASSKEY;
 
     showToast('🔄 Connecting to Google Apps Script gateway...');
     updateSyncSubtitle(ledgerRecords.length, 'Syncing...');
 
     try {
-      const fullUrl = `${gasUrl}?action=getLedgerData&key=${encodeURIComponent(passkey)}`;
+      // Must use action=get_data and sheetId to match Google Apps Script doGet protocol!
+      const fullUrl = `${gasUrl}?action=get_data&key=${encodeURIComponent(passkey)}&sheetId=${LEDGER_SHEET_ID}&t=${Date.now()}`;
       const res = await fetch(fullUrl, { method: 'GET', mode: 'cors' });
       if (!res.ok) throw new Error(`HTTP ${res.status}: Gateway responded with error`);
       
       const json = await res.json();
-      if (!json.success && json.error) throw new Error(json.error);
+      if (json.status === 'error' && json.message) throw new Error(json.message);
 
-      const items = json.data || json.records || [];
+      const items = json.records || json.data || [];
       if (Array.isArray(items) && items.length > 0) {
         ledgerRecords = normalizeRecords(items);
+        
+        // Save to BOTH shared dashboard keys and assistant keys
+        localStorage.setItem('cached_ledger_sheet2', JSON.stringify(items));
+        localStorage.setItem('cached_time_sheet2', Date.now().toString());
         localStorage.setItem('LEDGER_DATA_CACHE_V2', JSON.stringify(items));
-        updateSyncSubtitle(ledgerRecords.length, `Synced live at ${new Date().toLocaleTimeString()}`);
+
+        if (json.arrayTab) {
+          localStorage.setItem('cached_array_taxonomies', JSON.stringify(json.arrayTab));
+          mergeTaxonomies(json.arrayTab);
+        }
+
+        updateSyncSubtitle(ledgerRecords.length, `Synced live (${items.length} records) at ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`);
         showToast(`✅ Synced ${ledgerRecords.length} records successfully!`);
       } else {
         showToast('⚠️ Sync completed but no records returned.');
+        updateSyncSubtitle(ledgerRecords.length, 'Sync returned 0 records');
       }
     } catch (err) {
       console.error('Sync failed:', err);
@@ -769,7 +834,7 @@
     else if (/cash/i.test(q)) targetAccount = 'Cash';
 
     // --- CASE 1: Monthly Expense List / Donut Breakdown ("last month ke expense list do" / "category-wise") ---
-    if ((foundMonths.length === 1 && (direction === 'Expense' || /list|breakdown/i.test(q))) || /category[- ]wise|sabse zyada|breakdown|categories/i.test(q)) {
+    if (!targetCategory && ((foundMonths.length === 1 && (direction === 'Expense' || /list|breakdown/i.test(q))) || /category[- ]wise|sabse zyada|breakdown|categories/i.test(q))) {
       const monthFilter = foundMonths.length === 1 ? foundMonths[0] : null;
       let monthTx = ledgerRecords.filter(r => (r.amountXpns || 0) > 0);
       if (monthFilter) {
@@ -800,6 +865,35 @@
       renderContributingTable(monthTx);
 
       logQueryAudit(rawQ, el.answerHeadline.textContent, totalExpense, 0, monthTx.length);
+      return;
+    }
+
+    // --- CASE 1B: Single Category in a Specific Month (e.g. "March rental income", "September ka rashan") ---
+    if (foundMonths.length === 1 && targetCategory) {
+      const monthStr = foundMonths[0];
+      const monthCatRecords = ledgerRecords.filter(r => 
+        (r.month || '').toLowerCase() === monthStr.toLowerCase() &&
+        r.category.toLowerCase() === targetCategory.toLowerCase()
+      );
+      const isInc = (direction === 'Income' || targetCategory === 'Income' || /rent|kiraya/i.test(q));
+      const totalAmt = monthCatRecords.reduce((a, b) => a + (isInc ? b.amtInCredit : b.amountXpns), 0);
+
+      el.answerHeadline.textContent = `${monthStr} 2026 ${targetCategory}: ₹${totalAmt.toLocaleString('en-IN')}`;
+      el.answerSubtext.textContent = `Found ${monthCatRecords.length} transactions in ${monthStr} 2026. 100% deterministic calculation.`;
+
+      el.queryKpiExpense.textContent = isInc ? '₹0' : `₹${totalAmt.toLocaleString('en-IN')}`;
+      el.queryKpiIncome.textContent = isInc ? `₹${totalAmt.toLocaleString('en-IN')}` : '₹0';
+      el.queryKpiCount.textContent = monthCatRecords.length;
+
+      hideDonutPanel();
+      renderBarChart(
+        monthCatRecords.map(r => r.date),
+        monthCatRecords.map(r => isInc ? r.amtInCredit : r.amountXpns),
+        `${targetCategory} (₹)`
+      );
+      lastQueryContributingRecords = monthCatRecords;
+      renderContributingTable(monthCatRecords);
+      logQueryAudit(rawQ, el.answerHeadline.textContent, isInc ? 0 : totalAmt, isInc ? totalAmt : 0, monthCatRecords.length);
       return;
     }
 
@@ -893,10 +987,10 @@
     if (foundMonths.length === 1) matching = matching.filter(r => (r.month || '').toLowerCase() === foundMonths[0].toLowerCase());
 
     const cleanedKeywords = q
-      .replace(/batao|kitna|hai|ka|ke|ki|karo|dikhao|total|all[- ]time|expense|income|spend|hua|search|please|expenses/gi, ' ')
+      .replace(/batao|kitna|hai|ka|ke|ki|karo|dikhao|total|all[- ]time|expense|income|spend|hua|search|please|expenses|category|categories/gi, ' ')
       .trim()
       .split(/\s+/)
-      .filter(w => w.length >= 3 && !foundMonths.map(m => m.toLowerCase()).includes(w));
+      .filter(w => w.length >= 3 && !foundMonths.map(m => m.toLowerCase()).includes(w) && (!targetCategory || !targetCategory.toLowerCase().includes(w)));
 
     if (cleanedKeywords.length > 0 && !targetCategory) {
       matching = matching.filter(r => {
@@ -908,7 +1002,13 @@
     const exp = matching.reduce((a, b) => a + (b.amountXpns || 0), 0);
     const inc = matching.reduce((a, b) => a + (b.amtInCredit || 0), 0);
 
-    const titlePrefix = [foundMonths[0], targetCategory, cleanedKeywords.join(' ')].filter(Boolean).join(' ') || 'Ledger Query';
+    let titlePrefix = '';
+    if (targetCategory) {
+      titlePrefix = [foundMonths[0], targetCategory].filter(Boolean).join(' ');
+    } else {
+      titlePrefix = [foundMonths[0], cleanedKeywords.join(' ')].filter(Boolean).join(' ') || 'Ledger Query';
+    }
+
     el.answerHeadline.textContent = `${titlePrefix}: ₹${exp > 0 ? exp.toLocaleString('en-IN') + ' Spent' : inc.toLocaleString('en-IN') + ' Inflow'}`;
     el.answerSubtext.textContent = `Found ${matching.length} matching transactions. 100% verified against ledger data.`;
 
@@ -1103,9 +1203,13 @@
   function logQueryAudit(queryText, headline, expense, income, count) {
     try {
       const history = JSON.parse(localStorage.getItem('LEDGER_QUERY_AUDIT_LOG_V1') || '[]');
+      const now = new Date();
       const newEntry = {
         id: Date.now(),
-        timestamp: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+        timestampRaw: Date.now(),
+        dateStr: now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        timeStr: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+        timestamp: now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
         query: queryText,
         headline: headline,
         expense: expense,
@@ -1113,8 +1217,8 @@
         count: count
       };
       history.unshift(newEntry);
-      // Keep last 30 queries
-      if (history.length > 30) history.pop();
+      // Keep last 50 queries
+      if (history.length > 50) history.pop();
       localStorage.setItem('LEDGER_QUERY_AUDIT_LOG_V1', JSON.stringify(history));
       renderQueryHistory();
     } catch(e) {
@@ -1127,33 +1231,129 @@
     try {
       const history = JSON.parse(localStorage.getItem('LEDGER_QUERY_AUDIT_LOG_V1') || '[]');
       if (el.queryHistoryCount) el.queryHistoryCount.textContent = history.length;
+      if (el.histCountAll) el.histCountAll.textContent = history.length;
 
       if (history.length === 0) {
-        el.queryHistoryList.innerHTML = '<p style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">No queries in history yet. Ask a question above to start logging.</p>';
+        el.queryHistoryList.innerHTML = '<p style="font-size: 0.75rem; color: var(--text-muted); font-style: italic; padding: 0.5rem 0;">No queries in history yet. Ask a question above to start logging.</p>';
         return;
       }
 
       el.queryHistoryList.innerHTML = '';
-      history.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        div.innerHTML = `
-          <div class="history-prompt">
-            <span>💬 "${escapeHtml(item.query)}"</span>
-            <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 400;">${item.timestamp}</span>
-          </div>
-          <div class="history-reply">${escapeHtml(item.headline)}</div>
-          <div class="history-meta">Outflow: ₹${Number(item.expense).toLocaleString('en-IN')} • Inflow: ₹${Number(item.income).toLocaleString('en-IN')} • Records: ${item.count}</div>
-        `;
 
-        div.addEventListener('click', () => {
-          el.nlQueryInput.value = item.query;
-          if (el.btnClearNlQuery) el.btnClearNlQuery.classList.remove('hidden');
-          executeNaturalLanguageQuery(item.query);
+      if (currentHistoryFilter === 'ALL') {
+        history.forEach((item, idx) => {
+          el.queryHistoryList.appendChild(createHistoryItemElement(item, idx));
+        });
+      } else if (currentHistoryFilter === 'HOURLY') {
+        const now = Date.now();
+        const buckets = {
+          'Past 1 Hour': [],
+          '1 to 3 Hours Ago': [],
+          '3 to 6 Hours Ago': [],
+          'Earlier Today': [],
+          'Older than 24 Hours': []
+        };
+
+        history.forEach((item, idx) => {
+          const itemTime = item.timestampRaw || item.id || now;
+          const diffMinutes = Math.floor((now - itemTime) / 60000);
+          if (diffMinutes < 60) buckets['Past 1 Hour'].push({ item, idx });
+          else if (diffMinutes < 180) buckets['1 to 3 Hours Ago'].push({ item, idx });
+          else if (diffMinutes < 360) buckets['3 to 6 Hours Ago'].push({ item, idx });
+          else if (diffMinutes < 1440) buckets['Earlier Today'].push({ item, idx });
+          else buckets['Older than 24 Hours'].push({ item, idx });
         });
 
-        el.queryHistoryList.appendChild(div);
+        Object.entries(buckets).forEach(([bucketName, entries]) => {
+          if (entries.length === 0) return;
+          const header = document.createElement('div');
+          header.className = 'history-group-header';
+          header.innerHTML = `<span>⏱️ ${bucketName}</span><span style="font-size:0.65rem; opacity:0.8;">${entries.length} queries</span>`;
+          el.queryHistoryList.appendChild(header);
+
+          entries.forEach(({ item, idx }) => {
+            el.queryHistoryList.appendChild(createHistoryItemElement(item, idx));
+          });
+        });
+      } else if (currentHistoryFilter === 'DAILY') {
+        const todayStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        const yesterday = new Date(Date.now() - 86400000);
+        const yesterdayStr = yesterday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+        const dayGroups = {};
+        history.forEach((item, idx) => {
+          let dayKey = item.dateStr;
+          if (!dayKey && item.timestampRaw) {
+            dayKey = new Date(item.timestampRaw).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+          }
+          if (!dayKey) dayKey = 'Other';
+
+          let label = dayKey;
+          if (dayKey === todayStr) label = 'Today (' + dayKey + ')';
+          else if (dayKey === yesterdayStr) label = 'Yesterday (' + dayKey + ')';
+
+          if (!dayGroups[label]) dayGroups[label] = [];
+          dayGroups[label].push({ item, idx });
+        });
+
+        Object.entries(dayGroups).forEach(([dayLabel, entries]) => {
+          const header = document.createElement('div');
+          header.className = 'history-group-header';
+          header.innerHTML = `<span>📅 ${dayLabel}</span><span style="font-size:0.65rem; opacity:0.8;">${entries.length} queries</span>`;
+          el.queryHistoryList.appendChild(header);
+
+          entries.forEach(({ item, idx }) => {
+            el.queryHistoryList.appendChild(createHistoryItemElement(item, idx));
+          });
+        });
+      }
+    } catch(e) {
+      console.warn('Render history error:', e);
+    }
+  }
+
+  function createHistoryItemElement(item, idx) {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.innerHTML = `
+      <div class="history-prompt">
+        <span>💬 "${escapeHtml(item.query)}"</span>
+        <div style="display:flex; align-items:center; gap:0.4rem;">
+          <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 400;">${item.timeStr ? item.timeStr : item.timestamp}</span>
+          <button type="button" class="history-item-del-btn" data-id="${item.id}" title="Remove entry">✕</button>
+        </div>
+      </div>
+      <div class="history-reply">${escapeHtml(item.headline)}</div>
+      <div class="history-meta">Outflow: ₹${Number(item.expense).toLocaleString('en-IN')} • Inflow: ₹${Number(item.income).toLocaleString('en-IN')} • Records: ${item.count}</div>
+    `;
+
+    // Click to re-run
+    div.addEventListener('click', (e) => {
+      if (e.target && e.target.classList.contains('history-item-del-btn')) return;
+      el.nlQueryInput.value = item.query;
+      if (el.btnClearNlQuery) el.btnClearNlQuery.classList.remove('hidden');
+      executeNaturalLanguageQuery(item.query);
+    });
+
+    // Delete item handler
+    const delBtn = div.querySelector('.history-item-del-btn');
+    if (delBtn) {
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteHistoryItem(item.id);
       });
+    }
+
+    return div;
+  }
+
+  function deleteHistoryItem(id) {
+    try {
+      const history = JSON.parse(localStorage.getItem('LEDGER_QUERY_AUDIT_LOG_V1') || '[]');
+      const filtered = history.filter(h => h.id !== id);
+      localStorage.setItem('LEDGER_QUERY_AUDIT_LOG_V1', JSON.stringify(filtered));
+      renderQueryHistory();
+      showToast('Entry removed from log');
     } catch(e) {}
   }
 
@@ -1287,12 +1487,25 @@
     // Copy / Clear History
     if (el.btnCopyQueryHistory) {
       el.btnCopyQueryHistory.addEventListener('click', () => {
-        const log = localStorage.getItem('LEDGER_QUERY_AUDIT_LOG_V1') || '[]';
-        navigator.clipboard.writeText(log).then(() => {
-          showToast('📋 Audit log JSON copied to clipboard!');
-        }).catch(() => {
-          alert('Could not copy automatically. Check console or permissions.');
-        });
+        try {
+          const history = JSON.parse(localStorage.getItem('LEDGER_QUERY_AUDIT_LOG_V1') || '[]');
+          if (history.length === 0) {
+            showToast('Log is currently empty');
+            return;
+          }
+          let text = `=== LEDGER INTELLIGENCE AUDIT LOG ===\nExported: ${new Date().toLocaleString()}\nTotal Queries Logged: ${history.length}\n\n`;
+          history.forEach((h, i) => {
+            text += `[${i + 1}] ${h.dateStr || ''} ${h.timeStr || h.timestamp || ''}\n`;
+            text += `Q: "${h.query}"\n`;
+            text += `A: ${h.headline}\n`;
+            text += `Outflow: ₹${Number(h.expense).toLocaleString('en-IN')} | Inflow: ₹${Number(h.income).toLocaleString('en-IN')} | Txns: ${h.count}\n\n`;
+          });
+          navigator.clipboard.writeText(text).then(() => {
+            showToast('📋 Formatted audit log copied to clipboard!');
+          }).catch(() => {
+            prompt('Copy audit log:', text);
+          });
+        } catch(e) {}
       });
     }
 
@@ -1306,12 +1519,33 @@
       });
     }
 
+    // History View Filter Toggles (All / Hourly / Daily)
+    const histBtns = [
+      { btn: el.btnHistFilterAll, view: 'ALL', label: 'Chronological Log' },
+      { btn: el.btnHistFilterHourly, view: 'HOURLY', label: 'Hourly Groups' },
+      { btn: el.btnHistFilterDaily, view: 'DAILY', label: 'Daily Groups' }
+    ];
+
+    histBtns.forEach(({ btn, view, label }) => {
+      if (btn) {
+        btn.addEventListener('click', () => {
+          histBtns.forEach(b => b.btn && b.btn.classList.remove('active'));
+          btn.classList.add('active');
+          currentHistoryFilter = view;
+          if (el.historyActiveViewLabel) el.historyActiveViewLabel.textContent = label;
+          renderQueryHistory();
+        });
+      }
+    });
+
     // Sync & Passkey handlers
     if (el.btnSaveAssistantKey) {
       el.btnSaveAssistantKey.addEventListener('click', () => {
         const key = el.assistantPasskey.value.trim();
         const url = el.assistantGasUrl.value.trim();
+        localStorage.setItem('ledger_auth_key', key);
         localStorage.setItem('LEDGER_PASSKEY', key);
+        localStorage.setItem('gas_webapp_url', url);
         localStorage.setItem('LEDGER_GAS_URL', url);
         showToast('🔐 Gateway credentials saved to browser localStorage!');
       });

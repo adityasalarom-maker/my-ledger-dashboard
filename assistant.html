@@ -274,7 +274,7 @@
 
       <!-- Persistent Query & Reply History / Audit Log Section -->
       <div class="glass-card" style="margin-top: 1rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 0.5rem;">
           <h3 style="font-size: 0.88rem; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 0.4rem;">
             📜 Query & Reply History Audit Log (<span id="queryHistoryCount">0</span>)
           </h3>
@@ -283,7 +283,19 @@
             <button type="button" id="btnClearQueryHistory" class="btn-secondary" style="font-size: 0.72rem; padding: 0.3rem 0.6rem;">🗑️ Clear</button>
           </div>
         </div>
-        <div id="queryHistoryList">
+
+        <!-- History Filter Toggles (All / Hourly / Daily) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div class="history-view-toggles" style="display: flex; gap: 0.35rem;">
+            <button type="button" class="query-chip active" id="btnHistFilterAll" data-view="ALL">All (<span id="histCountAll">0</span>)</button>
+            <button type="button" class="query-chip" id="btnHistFilterHourly" data-view="HOURLY">⏱️ Hourly</button>
+            <button type="button" class="query-chip" id="btnHistFilterDaily" data-view="DAILY">📅 Daily</button>
+          </div>
+          <span id="historyActiveViewLabel" style="font-size: 0.7rem; color: var(--text-muted); font-weight: 500;">Chronological Log</span>
+        </div>
+
+        <!-- Scrollable History Container -->
+        <div id="queryHistoryList" class="query-history-scroll-box">
           <p style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">No queries in history yet. Ask a question above to start logging.</p>
         </div>
       </div>
