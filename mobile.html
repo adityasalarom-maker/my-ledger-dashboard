@@ -7,6 +7,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Mobile-First Ledger Analytics Dashboard for Samsung Galaxy S25 Ultra - Live Google Sheets Sync">
+  <!-- Web App Manifest for Native Android Chrome Install (PWA) on Samsung Galaxy S25 Ultra -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <!-- Content Security Policy: Whitelist only trusted origins -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://docs.google.com;">
   <title>Ledger Mobile Dashboard | w LEDGER 2026 n</title>
 
   <!-- Modern Typography (Inter & JetBrains Mono) -->
@@ -59,6 +65,16 @@
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
             <span class="filter-count-badge hidden" id="activeFilterBadge">0</span>
           </button>
+
+          <!-- Security / Passkey Modal Trigger Button -->
+          <button id="openPasskeyModalBtn" class="header-icon-btn lock-btn" aria-label="Passkey Security" title="Ledger Passkey Security" type="button" style="color: #60a5fa;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </button>
+
+          <!-- Ledger Assistant Launcher Button -->
+          <a href="assistant.html" class="header-icon-btn assistant-btn" aria-label="Open AI Assistant" title="Open Ledger Intelligence Assistant" style="color: #38bdf8; text-decoration: none; display: flex; align-items: center; justify-content: center; font-size: 1.05rem;">
+            ⚡
+          </a>
         </div>
       </div>
 
@@ -947,7 +963,12 @@
                   <input type="url" id="gasWebhookInput" class="form-input text-xs font-mono" placeholder="https://script.google.com/macros/s/.../exec" value="https://script.google.com/macros/s/AKfycbz5Een-L-ggrYaFtoyuRRePZzMXM2jXNih9fFVvbsUUl8389oceEyNUG8JJGlC_RKHpYQ/exec">
                   <button type="button" id="btnSaveWebhookUrl" class="btn-form-save" style="padding: 0.4rem 0.75rem; font-size: 0.75rem; white-space: nowrap;">Save URL</button>
                 </div>
-                <span id="gasWebhookStatusHint" style="font-size: 0.65rem; color: #34d399;">🟢 <strong>Connected!</strong> Edits and new entries write directly to your Google Sheet.</span>
+                <label class="form-label" style="font-size: 0.68rem; margin-top: 0.35rem;">Ledger Secret Passkey:</label>
+                <div style="display: flex; gap: 0.4rem;">
+                  <input type="password" id="gasPasskeyInput" class="form-input text-xs font-mono" placeholder="Enter Secret Passkey" value="Ledger2026!SecureKey">
+                  <button type="button" id="btnSavePasskey" class="btn-form-save" style="padding: 0.4rem 0.75rem; font-size: 0.75rem; white-space: nowrap;">Save Key</button>
+                </div>
+                <span id="gasWebhookStatusHint" style="font-size: 0.65rem; color: #34d399;">🟢 <strong>Authenticated!</strong> Securely connected to your private Google Sheet.</span>
               </div>
             </details>
           </div>
@@ -961,11 +982,53 @@
 
     <div class="mobile-toast hidden" id="mobileToast"></div>
 
+    <!-- 🔐 SECURE LEDGER PASSKEY AUTHENTICATION MODAL -->
+    <div class="edit-tx-modal-overlay hidden" id="ledgerAuthModal" role="dialog" aria-label="Unlock Ledger Dashboard">
+      <div class="edit-tx-modal-card" style="max-width: 370px;">
+        <div class="edit-modal-header" style="border-bottom: 1px solid rgba(59, 130, 246, 0.25);">
+          <div class="edit-modal-title-wrap">
+            <span style="font-size: 1.35rem;">🔐</span>
+            <div>
+              <h3 class="edit-modal-title">Secure Ledger Access</h3>
+              <span class="edit-modal-subtitle" style="color: #94a3b8; font-size: 0.72rem;">Enter your passkey to sync live financial data</span>
+            </div>
+          </div>
+          <button type="button" id="btnCloseAuthModal" class="edit-modal-close-btn" aria-label="Close">✕</button>
+        </div>
+
+        <form id="ledgerAuthForm" style="padding: 1rem 0 0.5rem 0;" onsubmit="return false;">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="ledgerAuthPasskey" class="form-label" style="font-size: 0.75rem;">Secret Passkey</label>
+              <div style="position: relative; display: flex; align-items: center;">
+                <input type="password" id="ledgerAuthPasskey" class="form-input font-mono" placeholder="Enter passkey..." autocomplete="current-password" required style="padding-right: 2.5rem;" value="Ledger2026!SecureKey">
+                <button type="button" id="btnTogglePasskeyVisibility" style="position: absolute; right: 0.5rem; background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.9rem;" title="Show/Hide">👁️</button>
+              </div>
+              <span id="authErrorMsg" class="hidden" style="color: #f87171; font-size: 0.7rem; margin-top: 0.25rem; display: block;"></span>
+            </div>
+          </div>
+
+          <div class="form-actions-row" style="margin-top: 1rem;">
+            <button type="button" id="btnUseDemoMode" class="btn-form-cancel" style="font-size: 0.75rem;">Demo Mode</button>
+            <button type="button" id="btnSaveAuthPasskey" class="btn-form-save" style="font-size: 0.75rem;">🔓 Unlock & Sync</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </div>
 
   <!-- Offline Cache Fallback -->
   <script src="ledger-data.js?v=20261013_v132"></script>
   <!-- Dedicated Mobile App Logic -->
   <script src="mobile.js?v=20261013_v132"></script>
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW register:', err));
+      });
+    }
+  </script>
 </body>
 </html>

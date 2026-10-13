@@ -1,0 +1,42 @@
+{
+  "id": "/my-ledger-dashboard/",
+  "name": "Ledger Intelligence Assistant & Dashboard",
+  "short_name": "My Ledger",
+  "description": "Natural-Language Entry & Financial Analytics for Personal Ledger",
+  "start_url": "./assistant.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#060910",
+  "theme_color": "#060910",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "AI Assistant",
+      "short_name": "Assistant",
+      "description": "Natural-Language Quick Add & Ledger Query Engine",
+      "url": "./assistant.html",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mobile Dashboard",
+      "short_name": "Dashboard",
+      "description": "Mobile Ledger Analytics & Transaction Grid",
+      "url": "./mobile.html",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

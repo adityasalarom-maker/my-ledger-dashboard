@@ -4,7 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <meta name="theme-color" content="#060910">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Ledger Intelligence Assistant - Natural-Language Entry & Financial Query Engine for Personal Ledger">
+  
+  <!-- Web App Manifest for Native Android Chrome Install (PWA) -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
   <!-- Content Security Policy: Whitelist only trusted origins -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://docs.google.com;">
   <title>Ledger Intelligence Assistant | Natural-Language Entry & Query Engine</title>
@@ -14,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="assistant.css?v=20261013_v1">
+  <link rel="stylesheet" href="assistant.css?v=20261014_v2">
 </head>
 <body>
   <div class="assistant-shell">
@@ -25,7 +32,7 @@
         <span class="brand-icon">⚡</span>
         <div>
           <h1 class="brand-title">Ledger Intelligence Assistant</h1>
-          <p class="brand-subtitle" id="syncStatusSubtitle">w LEDGER 2026 n • Zero Quota Overhead</p>
+          <p class="brand-subtitle" id="syncStatusSubtitle">● LEDGER 2026 ● Zero Quota Overhead</p>
         </div>
       </div>
       <div class="header-actions">
@@ -56,7 +63,7 @@
         <div class="card-header">
           <div>
             <h2 class="card-title">📝 Raw Informal Transaction Notes</h2>
-            <p class="card-subtitle">Paste multiline notes in English or Hinglish (amounts, dates, items, shorthand like 3k, 1.2k)</p>
+            <p class="card-subtitle">Paste multiline notes in English or Hinglish (shorthand, dates, items, workers, milk, expenses to Maa)</p>
           </div>
           <button type="button" id="btnLoadSampleNotes" class="btn-secondary" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;">
             📋 Load Sample Notes
@@ -64,21 +71,11 @@
         </div>
 
         <textarea id="rawNotesInput" class="raw-textarea" placeholder="Paste informal transactions here, for example:
-13 oct (3k rajeev charan rent pnb)
-100 - brush
-1 oct
-60 - diya, phul mala
-120 - hawan mitti tasla
-230 - trishaa parcel
-180-1.5kg seb
-160 - 40- Tkg tamatar, 20- dhaniya, 1pav adrak
-40, 60- 1kg khira
-o/1 0 oct
-1.2k- ma
-840- sidha pitra puja
-250- dkashna
-- 120- mata murti + 280+50 ( puja saman) ma
-  1870 - Trisha yoga bar, puja saman etc"></textarea>
+13 oct 
+250 for ma 
+1600 home worker monthly paid
+2760 monthly dudh 
+1k for rashan and sabji expenses to ma"></textarea>
 
         <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem;">
           <button type="button" id="btnClearNotes" class="btn-secondary">Clear</button>
@@ -93,7 +90,7 @@ o/1 0 oct
         <div class="card-header">
           <div>
             <h3 class="card-title">🔍 Structured Batch Review & Validation</h3>
-            <p class="card-subtitle">Review, edit fields, and resolve ambiguous items before writing to Google Sheets</p>
+            <p class="card-subtitle">Review, edit fields, and resolve highlighted items before writing to Google Sheets</p>
           </div>
           <span id="batchValidationBadge" class="confidence-badge confidence-high">Ready for Review</span>
         </div>
@@ -118,6 +115,16 @@ o/1 0 oct
           </div>
         </div>
 
+        <!-- Filter View Pills for Review Table -->
+        <div style="display: flex; gap: 0.45rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
+          <button type="button" class="query-chip active" id="btnFilterAllRows" style="font-weight: 700;">
+            All Items (<span id="pillCountAll">0</span>)
+          </button>
+          <button type="button" class="query-chip" id="btnFilterAttentionRows" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.4); font-weight: 700;">
+            ⚠️ Needs Attention (<span id="pillCountAttention">0</span>)
+          </button>
+        </div>
+
         <!-- Duplicate Warning Alert Box -->
         <div id="duplicateAlertBox" class="hidden" style="background: rgba(245, 158, 11, 0.12); border: 1px dashed #f59e0b; border-radius: 0.55rem; padding: 0.65rem 0.85rem; margin-bottom: 0.85rem; font-size: 0.78rem; color: #fbbf24;">
           ⚠️ <strong>Potential Duplicate Notice:</strong> One or more items match existing transactions in your ledger. Review highlighted rows before confirming.
@@ -128,14 +135,14 @@ o/1 0 oct
           <table class="review-table" id="reviewTable">
             <thead>
               <tr>
-                <th style="width: 100px;">Date</th>
+                <th style="width: 105px;">Date</th>
                 <th>Description</th>
                 <th style="width: 90px;">Amount (₹)</th>
                 <th style="width: 85px;">Type</th>
-                <th style="width: 110px;">Category</th>
-                <th style="width: 110px;">Account</th>
-                <th style="width: 75px;">For</th>
-                <th style="width: 75px;">Confidence</th>
+                <th style="width: 120px;">Category</th>
+                <th style="width: 115px;">Account</th>
+                <th style="width: 85px;">For</th>
+                <th style="width: 85px;">Status</th>
                 <th style="width: 40px;">Action</th>
               </tr>
             </thead>
@@ -175,20 +182,23 @@ o/1 0 oct
         </div>
 
         <div class="query-input-wrap">
-          <input type="text" id="nlQueryInput" class="query-input" placeholder="e.g., Batao total rental income kitni hai? or March rashan compare...">
+          <div class="query-input-container">
+            <input type="text" id="nlQueryInput" class="query-input" placeholder="e.g., last month ke expense list do, or March rental income...">
+            <button type="button" id="btnClearNlQuery" class="clear-query-btn hidden" aria-label="Clear Query">✕</button>
+          </div>
           <button type="button" id="btnAskQuery" class="btn-primary">Ask 💬</button>
         </div>
 
         <!-- Quick Query Chips -->
         <div class="search-chip-group">
+          <button type="button" class="query-chip" data-query="last month ke expense list do">🍩 Last Month Expenses</button>
           <button type="button" class="query-chip" data-query="Batao total rental income kitni hai?">🏠 Total Rental Income</button>
           <button type="button" class="query-chip" data-query="March ka total rental income batao">📅 March Rental Income</button>
           <button type="button" class="query-chip" data-query="Rashan category ka total all-time kitna hai?">🛒 All-Time Rashan</button>
           <button type="button" class="query-chip" data-query="February aur April ka rashan expense compare karo">⚖️ Feb vs Apr Rashan</button>
-          <button type="button" class="query-chip" data-query="Is month ka total expense aur income batao">📊 Current Month Net Flow</button>
           <button type="button" class="query-chip" data-query="PNB se kitna spend hua?">💳 PNB Account Spending</button>
-          <button type="button" class="query-chip" data-query="Category-wise expenses dikhao">🍩 Category-Wise Expenses</button>
-          <button type="button" class="query-chip" data-query="Last three months ka monthly expense trend dikhao">📈 3-Month Trend</button>
+          <button type="button" class="query-chip" data-query="Netflix recharges dikhao">🎬 Netflix Recharges</button>
+          <button type="button" class="query-chip" data-query="Category-wise expenses dikhao">📊 Category-Wise Expenses</button>
         </div>
       </div>
 
@@ -222,12 +232,26 @@ o/1 0 oct
             <canvas id="queryChartCanvas"></canvas>
           </div>
 
+          <!-- Donut Interactive Drill-Down Cards (Mobile Dashboard Style) -->
+          <div id="queryDonutCategoryPanel" class="hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; margin-bottom: 0.35rem;">
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Tap category card to filter grid below:</span>
+              <button type="button" id="btnClearCatFilter" class="hidden btn-secondary" style="font-size: 0.68rem; padding: 0.2rem 0.5rem;">Reset Filter</button>
+            </div>
+            <div id="queryCatBreakdownGrid" class="cat-breakdown-grid">
+              <!-- Populated with category cards -->
+            </div>
+          </div>
+
           <!-- Contributing Transactions Table -->
           <div>
-            <h4 style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;">
-              📋 Contributing Ledger Records (<span id="queryTableCount">0</span>)
-            </h4>
-            <div class="review-table-wrapper" style="max-height: 240px; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <h4 style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary);">
+                📋 Contributing Ledger Records (<span id="queryTableCount">0</span>)
+              </h4>
+              <span id="activeGridFilterLabel" style="font-size: 0.72rem; color: var(--cyan); font-weight: 600;"></span>
+            </div>
+            <div class="review-table-wrapper" style="max-height: 280px; overflow-y: auto;">
               <table class="review-table" id="queryResultsTable">
                 <thead>
                   <tr>
@@ -245,6 +269,22 @@ o/1 0 oct
               </table>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Persistent Query & Reply History / Audit Log Section -->
+      <div class="glass-card" style="margin-top: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h3 style="font-size: 0.88rem; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 0.4rem;">
+            📜 Query & Reply History Audit Log (<span id="queryHistoryCount">0</span>)
+          </h3>
+          <div style="display: flex; gap: 0.4rem;">
+            <button type="button" id="btnCopyQueryHistory" class="btn-secondary" style="font-size: 0.72rem; padding: 0.3rem 0.6rem;">📋 Copy Log</button>
+            <button type="button" id="btnClearQueryHistory" class="btn-secondary" style="font-size: 0.72rem; padding: 0.3rem 0.6rem;">🗑️ Clear</button>
+          </div>
+        </div>
+        <div id="queryHistoryList">
+          <p style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">No queries in history yet. Ask a question above to start logging.</p>
         </div>
       </div>
     </section>
@@ -298,6 +338,6 @@ o/1 0 oct
   <!-- Fallback Offline Dataset -->
   <script src="ledger-data.js"></script>
   <!-- Dedicated Assistant Logic -->
-  <script src="assistant.js"></script>
+  <script src="assistant.js?v=20261014_v2"></script>
 </body>
 </html>

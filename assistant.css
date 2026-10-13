@@ -409,14 +409,22 @@ body {
 .query-input-wrap {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
+}
+
+.query-input-container {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
 }
 
 .query-input {
-  flex: 1;
+  width: 100%;
   background: #090e1a;
   border: 1px solid var(--border-subtle);
   border-radius: 0.55rem;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 2.2rem 0.75rem 1rem;
   color: #f8fafc;
   font-size: 0.88rem;
 }
@@ -425,6 +433,116 @@ body {
   outline: none;
   border-color: var(--cyan);
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+.clear-query-btn {
+  position: absolute;
+  right: 0.65rem;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.05rem;
+  cursor: pointer;
+  padding: 0.2rem 0.35rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.clear-query-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Row Needs Attention Highlight */
+.row-needs-attention {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-left: 3px solid #f59e0b !important;
+}
+
+.row-needs-attention:hover {
+  background: rgba(245, 158, 11, 0.18) !important;
+}
+
+/* Category Breakdown Grid (Mobile Dashboard Donut Style) */
+.cat-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.cat-breakdown-card {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.55rem;
+  padding: 0.5rem 0.65rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.cat-breakdown-card:hover, .cat-breakdown-card.active {
+  border-color: var(--cyan);
+  background: rgba(56, 189, 248, 0.12);
+  transform: translateY(-1px);
+}
+
+.cat-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.cat-card-amount {
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: #fb7185;
+  margin-top: 0.2rem;
+}
+
+/* Query History & Audit Log */
+.history-item {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.55rem;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.history-item:hover {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.history-prompt {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #38bdf8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-reply {
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  margin-top: 0.25rem;
+  line-height: 1.4;
+}
+
+.history-meta {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
 }
 
 /* Query Result Card */

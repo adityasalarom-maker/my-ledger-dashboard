@@ -1,15 +1,22 @@
 /**
- * LEDGER INTELLIGENCE ASSISTANT v1.0
+ * LEDGER INTELLIGENCE ASSISTANT v2.0
  * Natural-Language Entry + Financial Query Engine + Security
  * 
- * Standalone client application: Zero modification of existing dashboard.
- * Zero token overhead against Gemini AI limits (runs deterministic local JS parsing & analytics).
+ * Standalone client application: Zero modification of existing core calculations.
+ * Zero token overhead against Gemini AI limits (100% deterministic local JS parsing & analytics).
  */
 
 (function () {
   'use strict';
 
-  // --- 1. MASTER TAXONOMIES & VOCABULARIES ---
+  // --- 1. REGISTER SERVICE WORKER FOR ANDROID PWA INSTALLATION ---
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW register error:', err));
+    });
+  }
+
+  // --- 2. MASTER TAXONOMIES & VOCABULARIES ---
   const MASTER_CATEGORIES = [
     'BUDGET', 'Sabji', 'Rashan', 'misc expn', 'Charity', 'Food', 'Stay', 'Fuel',
     'Personal Care', 'Bills', 'Recharges', 'Housing', 'Accessories', 'Fruits',
@@ -37,12 +44,15 @@
   const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbz5Een-L-ggrYaFtoyuRRePZzMXM2jXNih9fFVvbsUUl8389oceEyNUG8JJGlC_RKHpYQ/exec';
   const DEFAULT_PASSKEY = 'Ledger2026!SecureKey';
 
-  // --- 2. APPLICATION STATE ---
+  // --- 3. APPLICATION STATE ---
   let ledgerRecords = [];
   let parsedDraftBatch = [];
   let queryChartInstance = null;
+  let activeCategoryFilter = null;
+  let currentReviewFilter = 'ALL'; // 'ALL' or 'ATTENTION'
+  let lastQueryContributingRecords = [];
 
-  // --- 3. DOM ELEMENT REFERENCES ---
+  // --- 4. DOM ELEMENT REFERENCES ---
   const el = {
     tabs: document.querySelectorAll('.nav-tab-btn'),
     tabSections: document.querySelectorAll('.tab-section'),
@@ -56,12 +66,17 @@
     summaryExpense: document.getElementById('summaryExpense'),
     summaryIncome: document.getElementById('summaryIncome'),
     summaryAmbiguous: document.getElementById('summaryAmbiguous'),
+    btnFilterAllRows: document.getElementById('btnFilterAllRows'),
+    btnFilterAttentionRows: document.getElementById('btnFilterAttentionRows'),
+    pillCountAll: document.getElementById('pillCountAll'),
+    pillCountAttention: document.getElementById('pillCountAttention'),
     duplicateAlertBox: document.getElementById('duplicateAlertBox'),
     reviewTableBody: document.getElementById('reviewTableBody'),
     btnAddManualRow: document.getElementById('btnAddManualRow'),
     btnDiscardDraft: document.getElementById('btnDiscardDraft'),
     btnConfirmBatch: document.getElementById('btnConfirmBatch'),
     nlQueryInput: document.getElementById('nlQueryInput'),
+    btnClearNlQuery: document.getElementById('btnClearNlQuery'),
     btnAskQuery: document.getElementById('btnAskQuery'),
     queryChips: document.querySelectorAll('.query-chip'),
     queryResultCard: document.getElementById('queryResultCard'),
@@ -72,8 +87,16 @@
     queryKpiCount: document.getElementById('queryKpiCount'),
     queryChartContainer: document.getElementById('queryChartContainer'),
     queryChartCanvas: document.getElementById('queryChartCanvas'),
+    queryDonutCategoryPanel: document.getElementById('queryDonutCategoryPanel'),
+    queryCatBreakdownGrid: document.getElementById('queryCatBreakdownGrid'),
+    btnClearCatFilter: document.getElementById('btnClearCatFilter'),
+    activeGridFilterLabel: document.getElementById('activeGridFilterLabel'),
     queryResultsTableBody: document.getElementById('queryResultsTableBody'),
     queryTableCount: document.getElementById('queryTableCount'),
+    queryHistoryCount: document.getElementById('queryHistoryCount'),
+    queryHistoryList: document.getElementById('queryHistoryList'),
+    btnCopyQueryHistory: document.getElementById('btnCopyQueryHistory'),
+    btnClearQueryHistory: document.getElementById('btnClearQueryHistory'),
     assistantGasUrl: document.getElementById('assistantGasUrl'),
     assistantPasskey: document.getElementById('assistantPasskey'),
     btnSaveAssistantKey: document.getElementById('btnSaveAssistantKey'),
@@ -82,12 +105,13 @@
     toast: document.getElementById('assistantToast')
   };
 
-  // --- 4. INITIALIZATION ---
+  // --- 5. INITIALIZATION ---
   function init() {
     setupTabNavigation();
     loadSavedSettings();
     loadLedgerData();
     setupEventHandlers();
+    renderQueryHistory();
   }
 
   function setupTabNavigation() {
@@ -117,7 +141,7 @@
     setTimeout(() => el.toast.classList.add('hidden'), duration);
   }
 
-  // --- 5. DATA INGESTION & LOCAL CACHE ---
+  // --- 6. DATA INGESTION & LOCAL CACHE ---
   function loadLedgerData() {
     // 1. Check local storage cache
     const cachedData = localStorage.getItem('LEDGER_DATA_CACHE_V2') || localStorage.getItem('LEDGER_ENCRYPTED_CACHE_V1');
@@ -137,7 +161,7 @@
     // 2. Check window.LEDGER_DATA from ledger-data.js
     if (window.LEDGER_DATA && Array.isArray(window.LEDGER_DATA)) {
       ledgerRecords = normalizeRecords(window.LEDGER_DATA);
-      updateSyncSubtitle(ledgerRecords.length, 'Loaded from fallback ledger-data.js');
+      updateSyncSubtitle(ledgerRecords.length, 'Loaded from fallback template');
     } else {
       updateSyncSubtitle(0, 'No local records loaded. Tap Sync.');
     }
@@ -160,12 +184,12 @@
         by: r.by || 'Honey',
         forEntity: r.for || r.forEntity || 'Home',
         item: desc,
-        category: r.category || 'misc expn',
+        category: r.category || r.cat || 'misc expn',
         amountXpns: amtExp,
         amtInCredit: amtIn,
-        expenseAcc: r.expenseAcc || r.account || '',
-        incomeAccnt: r.incomeAccnt || r.account || '',
-        note: r.note || '',
+        expenseAcc: r.expenseAcc || r.exp_acc || r.account || '',
+        incomeAccnt: r.incomeAccnt || r.inc_acc || r.account || '',
+        note: r.note || r.info || '',
         balance: r.balance || null
       };
     });
@@ -176,7 +200,7 @@
     el.syncStatusSubtitle.textContent = `● LEDGER 2026 ● ${count} Transactions • ${note}`;
   }
 
-  // --- 6. SECURE SYNC WITH APPS SCRIPT ---
+  // --- 7. SECURE SYNC WITH APPS SCRIPT ---
   async function syncLiveData() {
     const gasUrl = el.assistantGasUrl.value.trim() || DEFAULT_GAS_URL;
     const passkey = el.assistantPasskey.value.trim() || DEFAULT_PASSKEY;
@@ -208,10 +232,13 @@
     }
   }
 
-  // --- 7. FEATURE A: RAW TRANSACTION NOTES PARSER ---
+  // --- 8. FEATURE A: RAW TRANSACTION NOTES PARSER ---
   function parseRawLine(line, currentDateContext, existingRecords = []) {
     const raw = line.trim();
     if (!raw) return null;
+
+    // RULE 1: Ignore lines that contain only punctuation (e.g. ".", "-", "*", "_", ",") or no alphanumeric characters
+    if (!/[a-zA-Z0-9]/.test(raw)) return null;
 
     // Check if line is purely a date header (e.g., "1 oct", "13 oct", "o/1 0 oct")
     const dateHeaderMatch = raw.match(/^([o0-9\/\s]+)\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)$/i);
@@ -224,7 +251,7 @@
           type: 'DATE_HEADER_AMBIGUOUS',
           raw,
           status: 'AMBIGUOUS',
-          message: `Ambiguous date header token "${raw}". Please review manually.`
+          message: `Ambiguous date token "${raw}". Please review manually.`
         };
       }
       const day = parseInt(rawDatePart, 10);
@@ -248,8 +275,8 @@
     if (text.startsWith('(') && text.endsWith(')')) {
       text = text.slice(1, -1).trim();
     }
-    // Also remove leading dash if present: "- 120- mata murti"
-    if (text.startsWith('-')) {
+    // Also remove leading dash/dot if present: "- 120- mata murti"
+    if (text.startsWith('-') || text.startsWith('.')) {
       text = text.slice(1).trim();
     }
 
@@ -261,7 +288,7 @@
     }
 
     // Extract amount token
-    // Look for leading number or k-shorthand: "3k", "100 -", "60 -", "180-", "1.2k-", "40, 60-"
+    // Look for leading number or k-shorthand: "3k", "100 -", "60 -", "180-", "1.2k-", "40, 60-", "1k for"
     let amount = null;
     let description = text;
 
@@ -288,11 +315,10 @@
     if (components.length > 0 && !amount) {
       amount = components.reduce((a, b) => a + b, 0);
     } else if (components.length > 0 && amount && !multiAmtMatch) {
-      // Add components if separate
       amount += components.reduce((a, b) => a + b, 0);
     }
 
-    // Classify direction, category, accounts, entities
+    // Default classifications
     let category = 'misc expn';
     let txType = 'Expense';
     let account = 'Hom Cash';
@@ -325,7 +351,7 @@
       reasons.push('Explicit digital UPI/GPay reference');
     }
 
-    // Entity mapping
+    // Entity mapping (Learned from real ledger)
     if (/(\bma\b|\bmaa\b)/i.test(lowerDesc)) {
       forEntity = 'Maa';
       reasons.push('Assigned For: Maa');
@@ -334,20 +360,35 @@
       reasons.push('Assigned For: Trishaa');
     }
 
-    // Category mapping
-    if (/seb|fruits|kela|khira/i.test(lowerDesc)) {
-      category = 'Fruits';
-    } else if (/tamatar|dhaniya|adrak|sabji|aloo|pyaz/i.test(lowerDesc)) {
+    // Category mapping learned directly from user ledger patterns:
+    if (/worker|maid|kamwali/i.test(lowerDesc)) {
+      category = 'Housing';
+      reasons.push('Home worker categorized as Housing (per ledger convention)');
+    } else if (/dudh|milk|doodh/i.test(lowerDesc)) {
+      category = 'Rashan';
+      reasons.push('Monthly dudh mapped to Rashan');
+    } else if (/rashan|atta|dal|chawal|oil|grocery|groceries/i.test(lowerDesc)) {
+      category = 'Rashan';
+    } else if (/tamatar|dhaniya|adrak|sabji|aloo|pyaz|vegetables/i.test(lowerDesc)) {
       category = 'Sabji';
-    } else if (/puja|diya|hawan|murti|mala/i.test(lowerDesc)) {
-      category = 'misc expn';
-      reasons.push('Religious/Puja item mapped to misc expn');
-    } else if (/brush|soap|oil/i.test(lowerDesc)) {
+    } else if (/seb|fruits|kela|khira|apple|mango/i.test(lowerDesc)) {
+      category = 'Fruits';
+    } else if (/puja|diya|hawan|murti|mala|pooja|ashram|pitra|kanya/i.test(lowerDesc)) {
+      category = 'Charity';
+      reasons.push('Puja/Charity mapped to Charity');
+    } else if (/brush|soap|cream|mehendi|shampoo|personal/i.test(lowerDesc)) {
       category = 'Personal Care';
     } else if (/dkashna|dakshina/i.test(lowerDesc)) {
       category = 'Charity';
-    } else if (/rashan|atta|dal|chawal/i.test(lowerDesc)) {
-      category = 'Rashan';
+    } else if (/cylinder|gas\b/i.test(lowerDesc)) {
+      category = 'Gas';
+    } else if (/jio|airtel|vi\b|recharge/i.test(lowerDesc)) {
+      category = 'Recharges';
+    } else if (/dava|doctor|hospital|medical|medicine|dental/i.test(lowerDesc)) {
+      category = 'Medical';
+    } else if (/for ma\b|to ma\b|to maa\b/i.test(lowerDesc)) {
+      category = 'Sabji'; // Common daily cash for Maa in user ledger
+      reasons.push('Daily cash for Maa mapped to Sabji');
     }
 
     // Confidence calibration
@@ -355,8 +396,8 @@
       confidence = 'LOW';
       reasons.push('Missing or zero amount');
     }
-    if (!lineDate) {
-      confidence = 'MEDIUM';
+    if (!lineDate || lineDate === 'Needs Date Review') {
+      confidence = 'LOW';
       reasons.push('No date inherited');
     }
 
@@ -401,12 +442,11 @@
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const parsed = parseRawLine(line, currentDateContext, ledgerRecords);
-      if (!parsed) continue;
+      if (!parsed) continue; // Strips lone dots and empty punctuation
 
       if (parsed.type === 'DATE_HEADER') {
         currentDateContext = parsed.date;
       } else if (parsed.type === 'DATE_HEADER_AMBIGUOUS') {
-        // Flag row as ambiguous for user confirmation
         results.push({
           raw: line,
           date: 'Needs Date Review',
@@ -433,7 +473,7 @@
     return results;
   }
 
-  // --- 8. REVIEW TABLE RENDERING & INLINE EDITING ---
+  // --- 9. REVIEW TABLE RENDERING & FILTERING ---
   function renderReviewTable(batch) {
     parsedDraftBatch = batch;
     el.reviewTableBody.innerHTML = '';
@@ -447,28 +487,54 @@
 
     let totalExpense = 0;
     let totalIncome = 0;
-    let ambiguousCount = 0;
+    let attentionCount = 0;
     let hasDuplicates = false;
 
-    batch.forEach((row, idx) => {
+    batch.forEach(row => {
       if (row.txType === 'Income') totalIncome += row.amount;
       else totalExpense += row.amount;
 
-      if (row.confidence === 'LOW' || row.date === 'Needs Date Review' || row.category === 'Needs Review') {
-        ambiguousCount++;
+      if (row.confidence === 'LOW' || row.date === 'Needs Date Review' || row.category === 'Needs Review' || !row.amount) {
+        attentionCount++;
       }
       if (row.isDuplicate) hasDuplicates = true;
+    });
+
+    // Update Summary & Badges
+    el.summaryCount.textContent = batch.length;
+    el.summaryExpense.textContent = `₹${totalExpense.toLocaleString('en-IN')}`;
+    el.summaryIncome.textContent = `₹${totalIncome.toLocaleString('en-IN')}`;
+    el.summaryAmbiguous.textContent = attentionCount;
+
+    if (el.pillCountAll) el.pillCountAll.textContent = batch.length;
+    if (el.pillCountAttention) el.pillCountAttention.textContent = attentionCount;
+
+    if (hasDuplicates) el.duplicateAlertBox.classList.remove('hidden');
+    else el.duplicateAlertBox.classList.add('hidden');
+
+    if (attentionCount > 0) {
+      el.batchValidationBadge.className = 'confidence-badge confidence-low';
+      el.batchValidationBadge.textContent = `${attentionCount} Items Need Attention ⚠️`;
+    } else {
+      el.batchValidationBadge.className = 'confidence-badge confidence-high';
+      el.batchValidationBadge.textContent = 'All Items Validated ✓';
+    }
+
+    // Render Table Rows (Respecting active filter)
+    batch.forEach((row, idx) => {
+      const isAttention = (row.confidence === 'LOW' || row.date === 'Needs Date Review' || row.category === 'Needs Review' || !row.amount);
+      if (currentReviewFilter === 'ATTENTION' && !isAttention) return;
 
       const tr = document.createElement('tr');
-      if (row.isDuplicate) tr.style.background = 'rgba(245, 158, 11, 0.08)';
+      if (isAttention) tr.classList.add('row-needs-attention');
 
-      const badgeClass = row.confidence === 'HIGH' ? 'confidence-high' : (row.confidence === 'MEDIUM' ? 'confidence-medium' : 'confidence-low');
-      const badgeText = row.isDuplicate ? 'Duplicate?' : row.confidence;
+      const badgeClass = isAttention ? 'confidence-low' : (row.confidence === 'HIGH' ? 'confidence-high' : 'confidence-medium');
+      const badgeText = isAttention ? '⚠️ Review' : (row.isDuplicate ? 'Duplicate?' : row.confidence);
 
       tr.innerHTML = `
-        <td><input type="text" class="table-input" value="${escapeHtml(row.date)}" data-field="date" data-idx="${idx}" style="width: 95px;"></td>
+        <td><input type="text" class="table-input" value="${escapeHtml(row.date)}" data-field="date" data-idx="${idx}" style="width: 100px; ${row.date === 'Needs Date Review' ? 'border-color: #f59e0b; color: #fbbf24;' : ''}"></td>
         <td><input type="text" class="table-input" value="${escapeHtml(row.description)}" data-field="description" data-idx="${idx}"></td>
-        <td><input type="number" class="table-input font-mono" value="${row.amount}" data-field="amount" data-idx="${idx}" style="width: 85px; text-align: right;"></td>
+        <td><input type="number" class="table-input font-mono" value="${row.amount}" data-field="amount" data-idx="${idx}" style="width: 85px; text-align: right; ${!row.amount ? 'border-color: #f43f5e;' : ''}"></td>
         <td>
           <select class="table-select" data-field="txType" data-idx="${idx}">
             <option value="Expense" ${row.txType === 'Expense' ? 'selected' : ''}>Expense</option>
@@ -490,7 +556,7 @@
             ${ENTITIES.for.map(f => `<option value="${f}" ${row.forEntity === f ? 'selected' : ''}>${f}</option>`).join('')}
           </select>
         </td>
-        <td><span class="confidence-badge ${badgeClass}">${badgeText}</span></td>
+        <td><span class="confidence-badge ${badgeClass}" title="${row.reasons.join(', ')}">${badgeText}</span></td>
         <td>
           <button type="button" class="btn-delete-row" data-idx="${idx}" title="Remove entry" style="background:none; border:none; color:#f43f5e; cursor:pointer; font-size:1.1rem;">×</button>
         </td>
@@ -499,24 +565,6 @@
       el.reviewTableBody.appendChild(tr);
     });
 
-    // Update Summary Bar
-    el.summaryCount.textContent = batch.length;
-    el.summaryExpense.textContent = `₹${totalExpense.toLocaleString('en-IN')}`;
-    el.summaryIncome.textContent = `₹${totalIncome.toLocaleString('en-IN')}`;
-    el.summaryAmbiguous.textContent = ambiguousCount;
-
-    if (hasDuplicates) el.duplicateAlertBox.classList.remove('hidden');
-    else el.duplicateAlertBox.classList.add('hidden');
-
-    if (ambiguousCount > 0) {
-      el.batchValidationBadge.className = 'confidence-badge confidence-low';
-      el.batchValidationBadge.textContent = `${ambiguousCount} Items Need Attention`;
-    } else {
-      el.batchValidationBadge.className = 'confidence-badge confidence-high';
-      el.batchValidationBadge.textContent = 'All Items Validated ✓';
-    }
-
-    // Attach row input listeners
     attachReviewTableListeners();
   }
 
@@ -567,21 +615,19 @@
     renderReviewTable(parsedDraftBatch);
   }
 
-  // --- 9. BATCH CONFIRMATION & APPS SCRIPT WRITEBACK GATE ---
+  // --- 10. BATCH CONFIRMATION & SAFE APPS SCRIPT WRITEBACK GATE ---
   async function confirmBatchWrite() {
     if (parsedDraftBatch.length === 0) {
       alert('Draft is empty. Parse or add entries first.');
       return;
     }
 
-    // Validate fields
     const invalidItems = parsedDraftBatch.filter(r => !r.amount || r.amount <= 0 || r.date === 'Needs Date Review');
     if (invalidItems.length > 0) {
       const proceed = confirm(`⚠️ Warning: ${invalidItems.length} items have missing dates or invalid amounts. Do you want to review them first?`);
       if (proceed) return;
     }
 
-    // Explicit confirmation dialog (Phase C Gate)
     const totalOutflow = parsedDraftBatch.filter(r => r.txType === 'Expense').reduce((a, b) => a + b.amount, 0);
     const totalInflow = parsedDraftBatch.filter(r => r.txType === 'Income').reduce((a, b) => a + b.amount, 0);
     const confirmMsg = `Confirm write to Google Sheets:\n` +
@@ -592,15 +638,12 @@
 
     if (!confirm(confirmMsg)) return;
 
-    // Build payload for Google Apps Script
     const gasUrl = el.assistantGasUrl.value.trim() || DEFAULT_GAS_URL;
     const passkey = el.assistantPasskey.value.trim() || DEFAULT_PASSKEY;
 
     showToast('🚀 Transmitting batch to Google Apps Script...');
 
     try {
-      // Map rows to exact ledger format with dual key naming:
-      // [Date, By, For, Item, Expense Acc (Col E), Category (Col F), Expense Amount (Col G), ..., Info, Inflow Amount, Inflow Acc]
       const rowsToAppend = parsedDraftBatch.map(r => ({
         date: r.date,
         by: r.by || 'Honey',
@@ -624,7 +667,7 @@
 
       const res = await fetch(gasUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' }, // Avoid preflight CORS issues in Apps Script
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           action: 'batchAppend',
           key: passkey,
@@ -640,7 +683,6 @@
       renderReviewTable([]);
       el.rawNotesInput.value = '';
 
-      // Re-fetch authoritative live data
       await syncLiveData();
     } catch (err) {
       console.error('Batch write error:', err);
@@ -648,10 +690,12 @@
     }
   }
 
-  // --- 10. FEATURE B: ASK MY LEDGER (DETERMINISTIC QUERY ENGINE) ---
+  // --- 11. FEATURE B: ASK MY LEDGER (DETERMINISTIC QUERY ENGINE) ---
   function executeNaturalLanguageQuery(queryText) {
-    const q = queryText.toLowerCase().trim();
-    if (!q) return;
+    const rawQ = queryText.trim();
+    if (!rawQ) return;
+
+    const q = rawQ.toLowerCase();
 
     if (ledgerRecords.length === 0) {
       alert('Ledger records not loaded yet. Tap "Sync Live Data" first.');
@@ -664,9 +708,45 @@
     // 1. Identify Target Direction
     let direction = 'All';
     if (/income|kamai|aamdani|credit/i.test(q)) direction = 'Income';
-    else if (/expense|kharcha|spent|spend|debit|outflow/i.test(q)) direction = 'Expense';
+    else if (/expense|kharcha|spent|spend|debit|outflow|list/i.test(q)) direction = 'Expense';
 
-    // 2. Identify Target Category
+    // 2. Relative Month & Typo Resolver
+    // Handles "lasr month", "last month", "pichle mahine", "this month"
+    const monthOrder = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const monthAbbrMap = {
+      jan: 'Jan', feb: 'Feb', mar: 'Mar', apr: 'Apr', may: 'May', jun: 'Jun',
+      jul: 'Jul', aug: 'Aug', sep: 'Sep', oct: 'Oct', nov: 'Nov', dec: 'Dec'
+    };
+
+    let targetRelativeMonth = null;
+    if (/lasr month|last month|pichle mahine|pichla month|prev month|previous month/i.test(q)) {
+      targetRelativeMonth = 'LAST_MONTH';
+    } else if (/this month|is month|current month|is mahine/i.test(q)) {
+      targetRelativeMonth = 'THIS_MONTH';
+    }
+
+    // Determine current month in context
+    const currentMonthAbbr = 'Oct'; // October 2026
+    const currIdx = monthOrder.indexOf(currentMonthAbbr.toLowerCase());
+    const prevIdx = (currIdx - 1 + 12) % 12;
+    const lastMonthAbbr = monthAbbrMap[monthOrder[prevIdx]];
+
+    const foundMonths = [];
+    if (targetRelativeMonth === 'LAST_MONTH') {
+      foundMonths.push(lastMonthAbbr);
+    } else if (targetRelativeMonth === 'THIS_MONTH') {
+      foundMonths.push(currentMonthAbbr);
+    } else {
+      Object.keys(monthAbbrMap).forEach(mStr => {
+        const regex = new RegExp(`\\b${mStr}\\b`, 'i');
+        if (regex.test(q)) {
+          const canonical = monthAbbrMap[mStr];
+          if (!foundMonths.includes(canonical)) foundMonths.push(canonical);
+        }
+      });
+    }
+
+    // 3. Identify Target Category
     let targetCategory = null;
     for (const cat of MASTER_CATEGORIES) {
       if (q.includes(cat.toLowerCase())) {
@@ -674,7 +754,6 @@
         break;
       }
     }
-    // Hindi category synonyms
     if (!targetCategory) {
       if (/rashan|groceries|kirana/i.test(q)) targetCategory = 'Rashan';
       else if (/sabji|tarkari|vegetables/i.test(q)) targetCategory = 'Sabji';
@@ -683,39 +762,48 @@
       else if (/personal care|brush|soap/i.test(q)) targetCategory = 'Personal Care';
     }
 
-    // 3. Identify Target Months
-    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-    const monthFull = {
-      jan: 'Jan', january: 'Jan',
-      feb: 'Feb', february: 'Feb',
-      mar: 'Mar', march: 'Mar',
-      apr: 'Apr', april: 'Apr',
-      may: 'May',
-      jun: 'Jun', june: 'Jun',
-      jul: 'Jul', july: 'Jul',
-      aug: 'Aug', august: 'Aug',
-      sep: 'Sep', september: 'Sep',
-      oct: 'Oct', october: 'Oct',
-      nov: 'Nov', november: 'Nov',
-      dec: 'Dec', december: 'Dec'
-    };
-
-    const foundMonths = [];
-    Object.keys(monthFull).forEach(mStr => {
-      const regex = new RegExp(`\\b${mStr}\\b`, 'i');
-      if (regex.test(q)) {
-        const canonical = monthFull[mStr];
-        if (!foundMonths.includes(canonical)) foundMonths.push(canonical);
-      }
-    });
-
     // 4. Identify Target Account
     let targetAccount = null;
     if (/pnb/i.test(q)) targetAccount = 'PNB';
     else if (/sbi/i.test(q)) targetAccount = 'SBI';
     else if (/cash/i.test(q)) targetAccount = 'Cash';
 
-    // --- CASE 1: Comparison between two months (e.g. "February aur April ka rashan compare karo") ---
+    // --- CASE 1: Monthly Expense List / Donut Breakdown ("last month ke expense list do" / "category-wise") ---
+    if ((foundMonths.length === 1 && (direction === 'Expense' || /list|breakdown/i.test(q))) || /category[- ]wise|sabse zyada|breakdown|categories/i.test(q)) {
+      const monthFilter = foundMonths.length === 1 ? foundMonths[0] : null;
+      let monthTx = ledgerRecords.filter(r => (r.amountXpns || 0) > 0);
+      if (monthFilter) {
+        monthTx = monthTx.filter(r => (r.month || '').toLowerCase() === monthFilter.toLowerCase());
+      }
+
+      const catMap = {};
+      monthTx.forEach(r => {
+        const c = r.category || 'misc expn';
+        catMap[c] = (catMap[c] || 0) + (r.amountXpns || 0);
+      });
+
+      const sortedCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+      const totalExpense = Object.values(catMap).reduce((a, b) => a + b, 0);
+      const topCat = sortedCats[0];
+
+      const monthLabel = monthFilter ? `${monthFilter} 2026` : 'All-Time';
+      el.answerHeadline.textContent = `${monthLabel} Total Expense: ₹${totalExpense.toLocaleString('en-IN')}`;
+      el.answerSubtext.textContent = `Calculated across ${monthTx.length} transactions across ${sortedCats.length} categories. Highest: ${topCat ? topCat[0] : 'None'} (₹${topCat ? topCat[1].toLocaleString('en-IN') : 0}).`;
+
+      el.queryKpiExpense.textContent = `₹${totalExpense.toLocaleString('en-IN')}`;
+      el.queryKpiIncome.textContent = '₹0';
+      el.queryKpiCount.textContent = monthTx.length;
+
+      // Render Donut & Category Cards
+      renderInteractiveDonut(sortedCats, monthTx);
+      lastQueryContributingRecords = monthTx;
+      renderContributingTable(monthTx);
+
+      logQueryAudit(rawQ, el.answerHeadline.textContent, totalExpense, 0, monthTx.length);
+      return;
+    }
+
+    // --- CASE 2: Comparison between two months ("Feb vs Apr rashan") ---
     if (foundMonths.length === 2) {
       const m1 = foundMonths[0];
       const m2 = foundMonths[1];
@@ -734,45 +822,21 @@
       el.queryKpiIncome.textContent = `₹${sum2.toLocaleString('en-IN')}`;
       el.queryKpiCount.textContent = r1.length + r2.length;
 
+      hideDonutPanel();
       renderComparisonChart([`${m1} ${targetCategory || ''}`, `${m2} ${targetCategory || ''}`], [sum1, sum2]);
-      renderContributingTable([...r1, ...r2]);
+      lastQueryContributingRecords = [...r1, ...r2];
+      renderContributingTable(lastQueryContributingRecords);
+
+      logQueryAudit(rawQ, el.answerHeadline.textContent, sum1, sum2, r1.length + r2.length);
       return;
     }
 
-    // --- CASE 2: Category-wise breakdown (e.g. "Category-wise expenses dikhao") ---
-    if (/category[- ]wise|sabse zyada|breakdown|categories/i.test(q)) {
-      const catMap = {};
-      ledgerRecords.forEach(r => {
-        const amt = r.amountXpns || 0;
-        if (amt > 0) {
-          catMap[r.category] = (catMap[r.category] || 0) + amt;
-        }
-      });
-
-      const sortedCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
-      const topCat = sortedCats[0];
-      const totalExpense = Object.values(catMap).reduce((a, b) => a + b, 0);
-
-      el.answerHeadline.textContent = `Highest Spending: ${topCat ? topCat[0] : 'N/A'} (₹${topCat ? topCat[1].toLocaleString('en-IN') : 0})`;
-      el.answerSubtext.textContent = `Total outflow categorized across ${sortedCats.length} categories is ₹${totalExpense.toLocaleString('en-IN')}.`;
-
-      el.queryKpiExpense.textContent = `₹${totalExpense.toLocaleString('en-IN')}`;
-      el.queryKpiIncome.textContent = '₹0';
-      el.queryKpiCount.textContent = ledgerRecords.length;
-
-      const top6 = sortedCats.slice(0, 6);
-      renderDonutChart(top6.map(c => c[0]), top6.map(c => c[1]));
-      renderContributingTable(ledgerRecords.filter(r => r.amountXpns > 0).slice(0, 30));
-      return;
-    }
-
-    // --- CASE 3: Rental Income query (e.g. "Batao total rental income kitni hai?") ---
+    // --- CASE 3: Rental Income query ---
     if (/rental|kiraya/i.test(q) || (targetCategory === 'Income' && /rent/i.test(q))) {
       const rentalRecords = ledgerRecords.filter(r => 
         (r.amtInCredit > 0) && (r.category === 'Income' || r.category === 'Rental' || /rent|rajeev|charan/i.test(r.item))
       );
 
-      // Month filter if specified
       let finalRecords = rentalRecords;
       let monthLabel = 'All-Time';
       if (foundMonths.length === 1) {
@@ -788,12 +852,16 @@
       el.queryKpiIncome.textContent = `₹${totalRent.toLocaleString('en-IN')}`;
       el.queryKpiCount.textContent = finalRecords.length;
 
+      hideDonutPanel();
       renderBarChart(finalRecords.map(r => r.date), finalRecords.map(r => r.amtInCredit), 'Rental Income');
+      lastQueryContributingRecords = finalRecords;
       renderContributingTable(finalRecords);
+
+      logQueryAudit(rawQ, el.answerHeadline.textContent, 0, totalRent, finalRecords.length);
       return;
     }
 
-    // --- CASE 4: Account spending query (e.g. "PNB se kitna spend hua?") ---
+    // --- CASE 4: Account spending query ("PNB se kitna spend hua?") ---
     if (targetAccount) {
       const accRecords = ledgerRecords.filter(r => 
         (r.expenseAcc && r.expenseAcc.toLowerCase().includes(targetAccount.toLowerCase())) ||
@@ -810,17 +878,20 @@
       el.queryKpiIncome.textContent = `₹${inc.toLocaleString('en-IN')}`;
       el.queryKpiCount.textContent = accRecords.length;
 
+      hideDonutPanel();
       renderComparisonChart([`${targetAccount} Outflow`, `${targetAccount} Inflow`], [exp, inc]);
+      lastQueryContributingRecords = accRecords;
       renderContributingTable(accRecords);
+
+      logQueryAudit(rawQ, el.answerHeadline.textContent, exp, inc, accRecords.length);
       return;
     }
 
-    // --- CASE 5: General Category, Month, or Freeform Keyword Query ---
+    // --- CASE 5: General Category, Month, or Freeform Keyword Query (e.g. "Netflix") ---
     let matching = [...ledgerRecords];
     if (targetCategory) matching = matching.filter(r => r.category.toLowerCase() === targetCategory.toLowerCase());
     if (foundMonths.length === 1) matching = matching.filter(r => (r.month || '').toLowerCase() === foundMonths[0].toLowerCase());
 
-    // Freeform keyword filter (handles "Netflix", specific merchants, items, notes, or entities)
     const cleanedKeywords = q
       .replace(/batao|kitna|hai|ka|ke|ki|karo|dikhao|total|all[- ]time|expense|income|spend|hua|search|please|expenses/gi, ' ')
       .trim()
@@ -829,7 +900,7 @@
 
     if (cleanedKeywords.length > 0 && !targetCategory) {
       matching = matching.filter(r => {
-        const fullSearchBlob = `${r.item || ''} ${r.note || ''} ${r.info || ''} ${r.category || ''} ${r.expenseAcc || ''} ${r.incomeAccnt || ''} ${r.forEntity || ''}`.toLowerCase();
+        const fullSearchBlob = `${r.item || ''} ${r.note || ''} ${r.category || ''} ${r.expenseAcc || ''} ${r.incomeAccnt || ''} ${r.forEntity || ''}`.toLowerCase();
         return cleanedKeywords.some(kw => fullSearchBlob.includes(kw));
       });
     }
@@ -845,16 +916,105 @@
     el.queryKpiIncome.textContent = `₹${inc.toLocaleString('en-IN')}`;
     el.queryKpiCount.textContent = matching.length;
 
+    hideDonutPanel();
     renderBarChart(matching.slice(0, 10).map(r => r.date), matching.slice(0, 10).map(r => r.amountXpns || r.amtInCredit), 'Amount (₹)');
+    lastQueryContributingRecords = matching;
     renderContributingTable(matching);
+
+    logQueryAudit(rawQ, el.answerHeadline.textContent, exp, inc, matching.length);
   }
 
-  // --- 11. CHART.JS VISUALIZATIONS ---
+  // --- 12. CHART.JS & DONUT DRILL-DOWN VISUALIZATIONS ---
   function destroyPreviousChart() {
     if (queryChartInstance) {
       queryChartInstance.destroy();
       queryChartInstance = null;
     }
+  }
+
+  function hideDonutPanel() {
+    if (el.queryDonutCategoryPanel) el.queryDonutCategoryPanel.classList.add('hidden');
+    if (el.activeGridFilterLabel) el.activeGridFilterLabel.textContent = '';
+    activeCategoryFilter = null;
+  }
+
+  function renderInteractiveDonut(sortedCategories, fullTxList) {
+    destroyPreviousChart();
+    el.queryChartContainer.classList.remove('hidden');
+    el.queryDonutCategoryPanel.classList.remove('hidden');
+
+    const totalExp = sortedCategories.reduce((a, b) => a + b[1], 0);
+    const topCategories = sortedCategories.slice(0, 8);
+    const labels = topCategories.map(c => c[0]);
+    const data = topCategories.map(c => c[1]);
+    const colors = ['#f43f5e', '#38bdf8', '#34d399', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4', '#eab308'];
+
+    const ctx = el.queryChartCanvas.getContext('2d');
+    queryChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: colors.slice(0, data.length),
+          borderWidth: 2,
+          borderColor: '#0b1120'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 10 } } }
+        },
+        onClick: (evt, activeEls) => {
+          if (activeEls && activeEls.length > 0) {
+            const clickedIdx = activeEls[0].index;
+            const clickedCat = labels[clickedIdx];
+            applyCategoryDrillDown(clickedCat, fullTxList);
+          }
+        }
+      }
+    });
+
+    // Populate Category Breakdown Cards (Mobile Dashboard style)
+    el.queryCatBreakdownGrid.innerHTML = '';
+    sortedCategories.forEach(([catName, catAmt], i) => {
+      const pct = totalExp > 0 ? ((catAmt / totalExp) * 100).toFixed(1) : 0;
+      const card = document.createElement('div');
+      card.className = 'cat-breakdown-card';
+      card.setAttribute('data-category', catName);
+      card.innerHTML = `
+        <div class="cat-card-header">
+          <span style="font-weight: 600; color: #f8fafc;">#${i + 1} ${escapeHtml(catName)}</span>
+          <span>${pct}%</span>
+        </div>
+        <div class="cat-card-amount">₹${catAmt.toLocaleString('en-IN')}</div>
+      `;
+
+      card.addEventListener('click', () => {
+        applyCategoryDrillDown(catName, fullTxList);
+      });
+
+      el.queryCatBreakdownGrid.appendChild(card);
+    });
+  }
+
+  function applyCategoryDrillDown(categoryName, fullTxList) {
+    activeCategoryFilter = categoryName;
+
+    // Highlight card
+    el.queryCatBreakdownGrid.querySelectorAll('.cat-breakdown-card').forEach(c => {
+      if (c.getAttribute('data-category') === categoryName) c.classList.add('active');
+      else c.classList.remove('active');
+    });
+
+    if (el.btnClearCatFilter) el.btnClearCatFilter.classList.remove('hidden');
+    if (el.activeGridFilterLabel) el.activeGridFilterLabel.textContent = `Filtered by: ${categoryName}`;
+
+    // Filter table below
+    const catRecords = fullTxList.filter(r => (r.category || '').toLowerCase() === categoryName.toLowerCase());
+    renderContributingTable(catRecords);
   }
 
   function renderComparisonChart(labels, data) {
@@ -878,9 +1038,7 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        },
+        plugins: { legend: { display: false } },
         scales: {
           x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } },
           y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } }
@@ -919,38 +1077,11 @@
     });
   }
 
-  function renderDonutChart(labels, data) {
-    destroyPreviousChart();
-    el.queryChartContainer.classList.remove('hidden');
-
-    const colors = ['#f43f5e', '#38bdf8', '#34d399', '#f59e0b', '#a855f7', '#ec4899'];
-    const ctx = el.queryChartCanvas.getContext('2d');
-    queryChartInstance = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: labels,
-        datasets: [{
-          data: data,
-          backgroundColor: colors.slice(0, data.length),
-          borderWidth: 2,
-          borderColor: '#0b1120'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 10 } } }
-        }
-      }
-    });
-  }
-
   function renderContributingTable(records) {
     el.queryResultsTableBody.innerHTML = '';
     el.queryTableCount.textContent = records.length;
 
-    records.slice(0, 50).forEach(r => {
+    records.slice(0, 75).forEach(r => {
       const tr = document.createElement('tr');
       const amt = (r.amtInCredit > 0 ? r.amtInCredit : r.amountXpns) || 0;
       const amtColor = r.amtInCredit > 0 ? '#34d399' : '#fb7185';
@@ -968,7 +1099,65 @@
     });
   }
 
-  // --- 12. UTILITIES & EVENT HANDLERS ---
+  // --- 13. PERSISTENT QUERY HISTORY & AUDIT LOG ---
+  function logQueryAudit(queryText, headline, expense, income, count) {
+    try {
+      const history = JSON.parse(localStorage.getItem('LEDGER_QUERY_AUDIT_LOG_V1') || '[]');
+      const newEntry = {
+        id: Date.now(),
+        timestamp: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+        query: queryText,
+        headline: headline,
+        expense: expense,
+        income: income,
+        count: count
+      };
+      history.unshift(newEntry);
+      // Keep last 30 queries
+      if (history.length > 30) history.pop();
+      localStorage.setItem('LEDGER_QUERY_AUDIT_LOG_V1', JSON.stringify(history));
+      renderQueryHistory();
+    } catch(e) {
+      console.warn('Audit log error:', e);
+    }
+  }
+
+  function renderQueryHistory() {
+    if (!el.queryHistoryList) return;
+    try {
+      const history = JSON.parse(localStorage.getItem('LEDGER_QUERY_AUDIT_LOG_V1') || '[]');
+      if (el.queryHistoryCount) el.queryHistoryCount.textContent = history.length;
+
+      if (history.length === 0) {
+        el.queryHistoryList.innerHTML = '<p style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">No queries in history yet. Ask a question above to start logging.</p>';
+        return;
+      }
+
+      el.queryHistoryList.innerHTML = '';
+      history.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.innerHTML = `
+          <div class="history-prompt">
+            <span>💬 "${escapeHtml(item.query)}"</span>
+            <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 400;">${item.timestamp}</span>
+          </div>
+          <div class="history-reply">${escapeHtml(item.headline)}</div>
+          <div class="history-meta">Outflow: ₹${Number(item.expense).toLocaleString('en-IN')} • Inflow: ₹${Number(item.income).toLocaleString('en-IN')} • Records: ${item.count}</div>
+        `;
+
+        div.addEventListener('click', () => {
+          el.nlQueryInput.value = item.query;
+          if (el.btnClearNlQuery) el.btnClearNlQuery.classList.remove('hidden');
+          executeNaturalLanguageQuery(item.query);
+        });
+
+        el.queryHistoryList.appendChild(div);
+      });
+    } catch(e) {}
+  }
+
+  // --- 14. UTILITIES & EVENT HANDLERS ---
   function escapeHtml(str) {
     if (!str) return '';
     return String(str)
@@ -980,24 +1169,13 @@
   }
 
   function setupEventHandlers() {
-    // Sample Notes loader
     if (el.btnLoadSampleNotes) {
       el.btnLoadSampleNotes.addEventListener('click', () => {
-        el.rawNotesInput.value = `13 oct (3k rajeev charan rent pnb)
-100 - brush
-1 oct
-60 - diya, phul mala
-120 - hawan mitti tasla
-230 - trishaa parcel
-180-1.5kg seb
-160 - 40- Tkg tamatar, 20- dhaniya, 1pav adrak
-40, 60- 1kg khira
-o/1 0 oct
-1.2k- ma
-840- sidha pitra puja
-250- dkashna
-- 120- mata murti + 280+50 ( puja saman) ma
-  1870 - Trisha yoga bar, puja saman etc`;
+        el.rawNotesInput.value = `13 oct 
+250 for ma 
+1600 home worker monthly paid
+2760 monthly dudh 
+1k for rashan and sabji expenses to ma`;
         showToast('Sample notes loaded into editor!');
       });
     }
@@ -1017,8 +1195,28 @@ o/1 0 oct
           return;
         }
         const parsed = parseFullNotesBlock(text);
+        currentReviewFilter = 'ALL';
         renderReviewTable(parsed);
-        showToast(`Parsed ${parsed.length} entries!`);
+        showToast(`Parsed ${parsed.length} entries cleanly!`);
+      });
+    }
+
+    // Filter Review Table Pills (All vs Needs Attention)
+    if (el.btnFilterAllRows) {
+      el.btnFilterAllRows.addEventListener('click', () => {
+        currentReviewFilter = 'ALL';
+        el.btnFilterAllRows.classList.add('active');
+        if (el.btnFilterAttentionRows) el.btnFilterAttentionRows.classList.remove('active');
+        renderReviewTable(parsedDraftBatch);
+      });
+    }
+
+    if (el.btnFilterAttentionRows) {
+      el.btnFilterAttentionRows.addEventListener('click', () => {
+        currentReviewFilter = 'ATTENTION';
+        el.btnFilterAttentionRows.classList.add('active');
+        if (el.btnFilterAllRows) el.btnFilterAllRows.classList.remove('active');
+        renderReviewTable(parsedDraftBatch);
       });
     }
 
@@ -1038,7 +1236,23 @@ o/1 0 oct
       el.btnConfirmBatch.addEventListener('click', confirmBatchWrite);
     }
 
-    // Query Engine handlers
+    // Query Engine handlers & Clear Cross Button
+    if (el.nlQueryInput && el.btnClearNlQuery) {
+      el.nlQueryInput.addEventListener('input', () => {
+        if (el.nlQueryInput.value.trim().length > 0) {
+          el.btnClearNlQuery.classList.remove('hidden');
+        } else {
+          el.btnClearNlQuery.classList.add('hidden');
+        }
+      });
+
+      el.btnClearNlQuery.addEventListener('click', () => {
+        el.nlQueryInput.value = '';
+        el.btnClearNlQuery.classList.add('hidden');
+        el.nlQueryInput.focus();
+      });
+    }
+
     if (el.btnAskQuery) {
       el.btnAskQuery.addEventListener('click', () => {
         executeNaturalLanguageQuery(el.nlQueryInput.value);
@@ -1057,9 +1271,40 @@ o/1 0 oct
       chip.addEventListener('click', () => {
         const query = chip.getAttribute('data-query');
         el.nlQueryInput.value = query;
+        if (el.btnClearNlQuery) el.btnClearNlQuery.classList.remove('hidden');
         executeNaturalLanguageQuery(query);
       });
     });
+
+    // Reset Category Drill Down
+    if (el.btnClearCatFilter) {
+      el.btnClearCatFilter.addEventListener('click', () => {
+        hideDonutPanel();
+        renderContributingTable(lastQueryContributingRecords);
+      });
+    }
+
+    // Copy / Clear History
+    if (el.btnCopyQueryHistory) {
+      el.btnCopyQueryHistory.addEventListener('click', () => {
+        const log = localStorage.getItem('LEDGER_QUERY_AUDIT_LOG_V1') || '[]';
+        navigator.clipboard.writeText(log).then(() => {
+          showToast('📋 Audit log JSON copied to clipboard!');
+        }).catch(() => {
+          alert('Could not copy automatically. Check console or permissions.');
+        });
+      });
+    }
+
+    if (el.btnClearQueryHistory) {
+      el.btnClearQueryHistory.addEventListener('click', () => {
+        if (confirm('Clear query history log?')) {
+          localStorage.removeItem('LEDGER_QUERY_AUDIT_LOG_V1');
+          renderQueryHistory();
+          showToast('Query history cleared.');
+        }
+      });
+    }
 
     // Sync & Passkey handlers
     if (el.btnSaveAssistantKey) {

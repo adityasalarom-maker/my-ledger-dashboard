@@ -79,7 +79,80 @@
     'fruits etc', 'misc p'
   ];
 
+  // Dynamic Master Taxonomies: Initialized with canonical arrays, then live-synced from ARRAY tab
+  const masterTaxonomies = {
+    categories: new Set(CANONICAL_CATEGORIES),
+    purposes: new Set(CANONICAL_PURPOSES),
+    persons: new Set(CANONICAL_PERSONS),
+    expenseAccounts: new Set(CANONICAL_EXPENSE_ACCOUNTS),
+    incomeAccounts: new Set(CANONICAL_INCOME_ACCOUNTS),
+    items: new Set(CANONICAL_ITEMS)
+  };
+
+  function mergeArrayTabTaxonomies(arrayTab) {
+    if (!arrayTab || typeof arrayTab !== 'object') return;
+    Object.keys(arrayTab).forEach(header => {
+      const lower = header.toLowerCase();
+      const items = Array.isArray(arrayTab[header]) ? arrayTab[header] : [];
+      items.forEach(val => {
+        if (!val || typeof val !== 'string') return;
+        const cleanVal = val.trim();
+        if (!cleanVal) return;
+        if (lower.indexOf('cat') !== -1) {
+          masterTaxonomies.categories.add(cleanVal);
+        } else if (lower.indexOf('exp') !== -1 && lower.indexOf('acc') !== -1) {
+          masterTaxonomies.expenseAccounts.add(cleanVal);
+        } else if (lower.indexOf('inc') !== -1 && lower.indexOf('acc') !== -1) {
+          masterTaxonomies.incomeAccounts.add(cleanVal);
+        } else if (lower.indexOf('for') !== -1 || lower.indexOf('purp') !== -1) {
+          masterTaxonomies.purposes.add(cleanVal);
+        } else if (lower.indexOf('by') !== -1 || lower.indexOf('person') !== -1) {
+          masterTaxonomies.persons.add(cleanVal);
+        } else if (lower.indexOf('item') !== -1) {
+          masterTaxonomies.items.add(cleanVal);
+        }
+      });
+    });
+  }
+
+  // Restore cached ARRAY tab taxonomies on startup
+  try {
+    const cachedArrays = JSON.parse(localStorage.getItem('cached_array_taxonomies') || '{}');
+    mergeArrayTabTaxonomies(cachedArrays);
+  } catch(e) {}
+
   const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbz5Een-L-ggrYaFtoyuRRePZzMXM2jXNih9fFVvbsUUl8389oceEyNUG8JJGlC_RKHpYQ/exec';
+  const DEFAULT_AUTH_PASSKEY = 'Ledger2026!SecureKey';
+
+  function getSavedPasskey() {
+    return localStorage.getItem('ledger_auth_key') || DEFAULT_AUTH_PASSKEY;
+  }
+
+  function setSavedPasskey(key) {
+    if (key && key.trim()) {
+      localStorage.setItem('ledger_auth_key', key.trim());
+    } else {
+      localStorage.removeItem('ledger_auth_key');
+    }
+  }
+
+  function getGasWebhookUrl() {
+    return localStorage.getItem('gas_webapp_url') || DEFAULT_GAS_URL;
+  }
+
+  function openPasskeyModal() {
+    const modal = document.getElementById('ledgerAuthModal');
+    const input = document.getElementById('ledgerAuthPasskey');
+    const errorMsg = document.getElementById('authErrorMsg');
+    if (errorMsg) { errorMsg.classList.add('hidden'); errorMsg.textContent = ''; }
+    if (input) input.value = getSavedPasskey();
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  function closePasskeyModal() {
+    const modal = document.getElementById('ledgerAuthModal');
+    if (modal) modal.classList.add('hidden');
+  }
 
 
   // Master In-Memory Dataset
@@ -322,6 +395,8 @@
     const statusLabel = document.getElementById('syncStatusLabel');
     const subtitle = document.getElementById('headerSyncSubtitle');
     const selector = document.getElementById('mobileSheetSelector');
+    const gasUrl = getGasWebhookUrl();
+    const passkey = getSavedPasskey();
 
     if (selector && selector.value !== currentSheetKey) {
       selector.value = currentSheetKey;
@@ -330,55 +405,113 @@
     if (syncIcon) syncIcon.classList.add('spinning');
     if (statusLabel) statusLabel.textContent = 'Syncing...';
 
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${cfg.id}/export?format=csv&t=${Date.now()}`;
-
     try {
-      const resp = await fetch(csvUrl, { cache: 'no-store' });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const csvText = await resp.text();
-      const parsed = parseLedgerRecordsFromCSV(csvText);
-
-      if (parsed && parsed.length > 0) {
-        rawLedgerData = parsed;
-        try {
-          localStorage.setItem(`cached_ledger_${currentSheetKey}`, JSON.stringify(parsed));
-          localStorage.setItem(`cached_time_${currentSheetKey}`, Date.now().toString());
-        } catch(e) {}
-
-        if (statusLabel) statusLabel.textContent = 'Live';
-        if (subtitle) {
-          const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-          subtitle.textContent = `${cfg.shortName} • Synced ${timeStr}`;
-        }
-
-        processAndRenderAll();
-        if (isManual) {
-          showToast(`✓ Synced ${parsed.length} rows from ${cfg.shortName}`);
-        }
-        return;
-      }
-    } catch (err) {
-      console.warn('Direct fetch failed, falling back to cache:', err);
+      // 1. PRIMARY: Authenticated Programmatic Fetch via Google Apps Script (Supports ARRAY Tab & Restricted Sheet)
       try {
-        const cached = localStorage.getItem(`cached_ledger_${currentSheetKey}`);
-        if (cached) {
-          rawLedgerData = JSON.parse(cached);
-          if (statusLabel) statusLabel.textContent = 'Cached';
-          if (subtitle) subtitle.textContent = `${cfg.shortName} • Offline Cache`;
+      const authSyncUrl = `${gasUrl}?action=get_data&key=${encodeURIComponent(passkey)}&sheetId=${cfg.id}&t=${Date.now()}`;
+      const resp = await fetch(authSyncUrl, { cache: 'no-store' });
+      
+      if (resp.status === 403) {
+        throw new Error('AUTH_FORBIDDEN');
+      }
+
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.status === 'error' && (data.code === 403 || String(data.message).toLowerCase().includes('unauthorized'))) {
+          throw new Error('AUTH_FORBIDDEN');
+        }
+
+        if (data.status === 'success' && Array.isArray(data.records) && data.records.length > 0) {
+          rawLedgerData = data.records;
+
+          // Merge Master Taxonomies from ARRAY Tab dynamically
+          if (data.arrayTab) {
+            mergeArrayTabTaxonomies(data.arrayTab);
+            try {
+              localStorage.setItem('cached_array_taxonomies', JSON.stringify(data.arrayTab));
+            } catch(e) {}
+          }
+
+          try {
+            localStorage.setItem(`cached_ledger_${currentSheetKey}`, JSON.stringify(data.records));
+            localStorage.setItem(`cached_time_${currentSheetKey}`, Date.now().toString());
+          } catch(e) {}
+
+          if (statusLabel) statusLabel.textContent = 'Live';
+          if (subtitle) {
+            const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            subtitle.textContent = `${cfg.shortName} • Synced ${timeStr}`;
+          }
+
           processAndRenderAll();
-          showToast(`Offline: Loaded cached data for ${cfg.shortName}`);
+          if (isManual) {
+            showToast(`✓ Synced ${data.records.length} rows & master taxonomies`);
+          }
           return;
         }
-      } catch(e) {}
-
-      if (Array.isArray(window.LEDGER_DATA) && window.LEDGER_DATA.length > 0) {
-        rawLedgerData = window.LEDGER_DATA;
-        if (statusLabel) statusLabel.textContent = 'Bundled';
-        processAndRenderAll();
-      } else {
-        if (statusLabel) statusLabel.textContent = 'Offline';
-        showToast(`Sync error: ${err.message}`);
       }
+    } catch (authErr) {
+      console.warn('Authenticated Apps Script fetch failed:', authErr);
+      if (authErr.message === 'AUTH_FORBIDDEN') {
+        if (statusLabel) statusLabel.textContent = 'Locked 🔐';
+        showToast('🔐 Passkey required to connect to private sheet');
+        openPasskeyModal();
+        if (syncIcon) syncIcon.classList.remove('spinning');
+        return;
+      }
+    }
+
+    // 2. SECONDARY FALLBACK: Direct CSV Fetch (in case sheet is accessed on a permissive network)
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${cfg.id}/export?format=csv&t=${Date.now()}`;
+    try {
+      const resp = await fetch(csvUrl, { cache: 'no-store' });
+      if (resp.ok) {
+        const csvText = await resp.text();
+        const parsed = parseLedgerRecordsFromCSV(csvText);
+        if (parsed && parsed.length > 0) {
+          rawLedgerData = parsed;
+          try {
+            localStorage.setItem(`cached_ledger_${currentSheetKey}`, JSON.stringify(parsed));
+            localStorage.setItem(`cached_time_${currentSheetKey}`, Date.now().toString());
+          } catch(e) {}
+
+          if (statusLabel) statusLabel.textContent = 'Live (CSV)';
+          if (subtitle) {
+            const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            subtitle.textContent = `${cfg.shortName} • Synced ${timeStr}`;
+          }
+
+          processAndRenderAll();
+          if (isManual) showToast(`✓ Synced ${parsed.length} rows from ${cfg.shortName}`);
+          return;
+        }
+      }
+    } catch(csvErr) {
+      console.warn('Direct CSV fetch unavailable (expected for restricted sheets):', csvErr);
+    }
+
+    // 3. TERTIARY FALLBACK: Local Device Cache
+    try {
+      const cached = localStorage.getItem(`cached_ledger_${currentSheetKey}`);
+      if (cached) {
+        rawLedgerData = JSON.parse(cached);
+        if (statusLabel) statusLabel.textContent = 'Cached';
+        if (subtitle) subtitle.textContent = `${cfg.shortName} • Offline Cache`;
+        processAndRenderAll();
+        showToast(`Offline: Loaded cached data for ${cfg.shortName}`);
+        return;
+      }
+    } catch(e) {}
+
+    // 4. QUATERNARY FALLBACK: Bundled Demo Template
+    if (Array.isArray(window.LEDGER_DATA) && window.LEDGER_DATA.length > 0) {
+      rawLedgerData = window.LEDGER_DATA;
+      if (statusLabel) statusLabel.textContent = 'Demo';
+      processAndRenderAll();
+    } else {
+      if (statusLabel) statusLabel.textContent = 'Offline';
+      showToast('Sync error: Unable to retrieve data');
+    }
     } finally {
       if (syncIcon) syncIcon.classList.remove('spinning');
     }
@@ -543,11 +676,11 @@
 
   // ==================== 3. FILTER DROPDOWNS POPULATION ====================
   function populateDrawerDropdowns() {
-    const categories = new Set();
-    const persons = new Set();
-    const purposes = new Set();
-    const expenseAccs = new Set();
-    const incomeAccs = new Set();
+    const categories = new Set(masterTaxonomies.categories);
+    const persons = new Set(masterTaxonomies.persons);
+    const purposes = new Set(masterTaxonomies.purposes);
+    const expenseAccs = new Set(masterTaxonomies.expenseAccounts);
+    const incomeAccs = new Set(masterTaxonomies.incomeAccounts);
 
     normalizedData.forEach(item => {
       if (item.category) categories.add(item.category);
@@ -1764,6 +1897,7 @@ function openEditTransactionModal(item, mode = 'edit') {
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           action: payloadAction,
+          key: getSavedPasskey(),
           sheetId: cfg.id,
           sheetName: 'LEDGER',
           insertAfterRow: insertAfterRow,
@@ -2874,13 +3008,13 @@ const savedWebhook = localStorage.getItem('gas_webapp_url') || DEFAULT_GAS_URL;
 
     // Setup Live Autocomplete Suggestions for Category and Item
     setupAutocomplete('editTxCat', 'editTxCatSuggestions', () => {
-      const allCats = new Set(CANONICAL_CATEGORIES);
+      const allCats = new Set(masterTaxonomies.categories);
       normalizedData.forEach(d => { if (d.category) allCats.add(d.category); });
       return Array.from(allCats).sort();
     });
 
     setupAutocomplete('editTxItem', 'editTxItemSuggestions', () => {
-      const allItems = new Set(CANONICAL_ITEMS);
+      const allItems = new Set(masterTaxonomies.items);
       normalizedData.forEach(d => { if (d.item) allItems.add(d.item); });
       return Array.from(allItems).sort();
     });
@@ -2901,6 +3035,64 @@ const savedWebhook = localStorage.getItem('gas_webapp_url') || DEFAULT_GAS_URL;
       btnSaveEdit.addEventListener('click', (e) => {
         e.preventDefault();
         saveTransactionFromForm();
+      });
+    }
+
+    // Passkey Modal & Security Setting Listeners
+    const openPasskeyBtn = document.getElementById('openPasskeyModalBtn');
+    const closePasskeyBtn = document.getElementById('btnCloseAuthModal');
+    const saveAuthPasskeyBtn = document.getElementById('btnSaveAuthPasskey');
+    const demoModeBtn = document.getElementById('btnUseDemoMode');
+    const togglePasskeyVisBtn = document.getElementById('btnTogglePasskeyVisibility');
+    const authPasskeyInput = document.getElementById('ledgerAuthPasskey');
+
+    if (openPasskeyBtn) openPasskeyBtn.addEventListener('click', openPasskeyModal);
+    if (closePasskeyBtn) closePasskeyBtn.addEventListener('click', closePasskeyModal);
+    if (demoModeBtn) demoModeBtn.addEventListener('click', () => {
+      closePasskeyModal();
+      rawLedgerData = window.LEDGER_DATA || [];
+      processAndRenderAll();
+      showToast('Switched to Demo Mode');
+    });
+
+    if (togglePasskeyVisBtn && authPasskeyInput) {
+      togglePasskeyVisBtn.addEventListener('click', () => {
+        if (authPasskeyInput.type === 'password') {
+          authPasskeyInput.type = 'text';
+          togglePasskeyVisBtn.textContent = '🔒';
+        } else {
+          authPasskeyInput.type = 'password';
+          togglePasskeyVisBtn.textContent = '👁️';
+        }
+      });
+    }
+
+    if (saveAuthPasskeyBtn && authPasskeyInput) {
+      saveAuthPasskeyBtn.addEventListener('click', () => {
+        const enteredKey = (authPasskeyInput.value || '').trim();
+        if (!enteredKey) {
+          showToast('Please enter your passkey');
+          return;
+        }
+        setSavedPasskey(enteredKey);
+        closePasskeyModal();
+        showToast('Passkey saved! Syncing live data...');
+        syncActiveSheetData(true);
+      });
+    }
+
+    // Direct Settings Passkey Input Wiring
+    const gasPasskeyInput = document.getElementById('gasPasskeyInput');
+    const btnSavePasskey = document.getElementById('btnSavePasskey');
+    if (gasPasskeyInput) {
+      gasPasskeyInput.value = getSavedPasskey();
+    }
+    if (btnSavePasskey && gasPasskeyInput) {
+      btnSavePasskey.addEventListener('click', () => {
+        const val = (gasPasskeyInput.value || '').trim();
+        setSavedPasskey(val);
+        showToast('✓ Ledger Passkey updated!');
+        syncActiveSheetData(true);
       });
     }
 
