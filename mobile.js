@@ -633,17 +633,42 @@
     if (!Array.isArray(records)) return [];
     return records.map((row, idx) => {
       const dateVal = row.date || '';
-      const amtExp = typeof row.amt_exp === 'number' ? row.amt_exp : parseFloat(row.amt_exp) || 0;
-      const amtIn = typeof row.amt_in === 'number' ? row.amt_in : parseFloat(row.amt_in) || 0;
-      const bal = typeof row.bal === 'number' ? row.bal : parseFloat(row.bal) || 0;
+
+      // Support GAS schema (amt_exp / amt_in) as well as fallback ledger-data.js (amount + type)
+      let amtExp = 0;
+      if (row.amt_exp !== undefined) {
+        amtExp = typeof row.amt_exp === 'number' ? row.amt_exp : parseFloat(row.amt_exp) || 0;
+      } else if (row.amountXpns !== undefined) {
+        amtExp = typeof row.amountXpns === 'number' ? row.amountXpns : parseFloat(row.amountXpns) || 0;
+      } else if (row.type === 'Expense' || (!row.type && row.amount && !row.amt_in)) {
+        amtExp = typeof row.amount === 'number' ? row.amount : parseFloat(row.amount) || 0;
+      }
+
+      let amtIn = 0;
+      if (row.amt_in !== undefined) {
+        amtIn = typeof row.amt_in === 'number' ? row.amt_in : parseFloat(row.amt_in) || 0;
+      } else if (row.amtInCredit !== undefined) {
+        amtIn = typeof row.amtInCredit === 'number' ? row.amtInCredit : parseFloat(row.amtInCredit) || 0;
+      } else if (row.type === 'Income') {
+        amtIn = typeof row.amount === 'number' ? row.amount : parseFloat(row.amount) || 0;
+      }
+
+      // Check row.balance (from Google Apps Script / ledger-data.js) and row.bal (from CSV)
+      const rawBal = row.balance !== undefined ? row.balance : row.bal;
+      const bal = typeof rawBal === 'number' ? rawBal : parseFloat(rawBal) || 0;
       
-      let monthVal = row.month || '';
+      // Clean and robust month extraction (resolves #REF! or empty values from sheet)
+      let monthVal = (row.month && !String(row.month).startsWith('#') && String(row.month).length <= 5) ? String(row.month).trim() : '';
       if (!monthVal && dateVal) {
         const d = parseDateValue(dateVal);
         if (!isNaN(d.getTime()) && d.getTime() > 0) {
           monthVal = d.toLocaleString('en-US', { month: 'short' });
         }
       }
+
+      const categoryVal = row.cat || row.category || 'misc expn';
+      const expAccVal = row.exp_acc || row.expenseAcc || (row.type === 'Expense' ? row.account : '') || 'Hom Cash';
+      const incAccVal = row.inc_acc || row.incomeAccnt || (row.type === 'Income' ? row.account : '') || '';
 
       return {
         id: idx,
@@ -653,22 +678,22 @@
         date: dateVal,
         dateObj: parseDateValue(dateVal),
         by: row.by || 'Honey',
-        for: row.for || 'Home',
-        forEntity: row.for || 'Home',
+        for: row.for || row.forEntity || 'Home',
+        forEntity: row.for || row.forEntity || 'Home',
         item: row.item || '',
-        expenseAcc: row.exp_acc || 'Hom Cash',
-        exp_acc: row.exp_acc || 'Hom Cash',
-        category: row.cat || 'misc expn',
-        cat: row.cat || 'misc expn',
+        expenseAcc: expAccVal,
+        exp_acc: expAccVal,
+        category: categoryVal,
+        cat: categoryVal,
         amountXpns: amtExp,
         amt_exp: amtExp,
         balance: bal,
         bal: bal,
-        info: row.info || '',
+        info: row.info || row.note || '',
         amtInCredit: amtIn,
         amt_in: amtIn,
-        incomeAccnt: row.inc_acc || '',
-        inc_acc: row.inc_acc || '',
+        incomeAccnt: incAccVal,
+        inc_acc: incAccVal,
         month: monthVal || 'Other'
       };
     }).filter(t => t.date || t.item || t.amountXpns || t.amtInCredit);

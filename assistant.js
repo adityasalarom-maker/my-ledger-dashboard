@@ -1788,7 +1788,7 @@
     hideDonutPanel();
 
     // 2. Intent Extraction
-    const isCompound = /income.*expense|expense.*income|rental.*expense|aamdani.*kharcha|kamai.*kharcha|kharcha.*kamai|dono|net|hisab|profit.*loss|balance/i.test(q);
+    const isCompound = /income.*expense|expense.*income|rental.*expense|aamdani.*kharcha|kamai.*kharcha|kharcha.*kamai|dono|net|hisab|profit.*loss|balance|bacha|bache|saving|remaning/i.test(q);
     let direction = 'All';
     if (isCompound) direction = 'Both';
     else if (/income|kamai|aamdani|credit/i.test(q)) direction = 'Income';
