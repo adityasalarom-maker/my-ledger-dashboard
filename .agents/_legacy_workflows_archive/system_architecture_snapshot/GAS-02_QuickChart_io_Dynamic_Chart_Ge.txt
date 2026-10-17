@@ -1,0 +1,61 @@
+// ================================================================
+// ASSET: GAS-02 - QuickChart.io Dynamic Chart Generator & Schematic Engine
+// TYPE: JavaScript / Chart.js API | TARGET: Google Apps Script > Code.gs
+// NOTES: Modular helper functions for QuickChart.io pie chart rendering and ASCII text bar charts for operational wallet balance queries. Dispatches directly to Telegram chats via sendPhoto and sendMessage APIs.
+// ================================================================
+
+/**
+ * Assembles a dynamic QuickChart URL for category spending
+ */
+function buildCategoryPieChartUrl(categoryTotalsMap, title) {
+  const labels = Object.keys(categoryTotalsMap);
+  const data = Object.values(categoryTotalsMap);
+  
+  const chartConfig = {
+    type: 'pie',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: [
+          '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+          '#9966FF', '#FF9F40', '#8AC926', '#1982C4'
+        ]
+      }]
+    },
+    options: {
+      title: {
+        display: true,
+        text: title || 'Expense Breakdown by Category',
+        fontSize: 16
+      },
+      plugins: {
+        datalabels: {
+          display: true,
+          formatter: (val, ctx) => {
+            return ctx.chart.data.labels[ctx.dataIndex] + ': ' + val;
+          },
+          color: '#ffffff',
+          font: { weight: 'bold', size: 11 }
+        }
+      }
+    }
+  };
+  
+  return '[link removed]' + encodeURIComponent(JSON.stringify(chartConfig));
+}
+
+/**
+ * Generates an ASCII schematic diagram of operational account balances
+ */
+function buildAccountSchematicDiagram(balances) {
+  let diagram = "OPERATIONAL WALLET BALANCES\n";
+  diagram += "========================================\n";
+  for (const [acc, bal] of Object.entries(balances)) {
+    const barLength = Math.max(1, Math.min(20, Math.floor(bal / 1000)));
+    const bar = "█".repeat(barLength);
+    diagram += `${acc.padEnd(14)} : Rs. ${bal.toString().padStart(7)} | ${bar}\n`;
+  }
+  diagram += "========================================\n";
+  return diagram;
+}

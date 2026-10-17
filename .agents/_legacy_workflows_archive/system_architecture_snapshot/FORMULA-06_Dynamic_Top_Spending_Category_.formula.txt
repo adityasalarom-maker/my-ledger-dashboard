@@ -1,0 +1,7 @@
+// ================================================================
+// ASSET: FORMULA-06 - Dynamic Top Spending Category Matrix
+// TYPE: Sheets Formula (QUERY) | TARGET: Summary / Analytics Tab
+// NOTES: Generates a live ranked table of highest spending categories and disbursement totals, automatically excluding internal budget transfers.
+// ================================================================
+
+=QUERY(LEDGER!A:G, "SELECT F, SUM(G) WHERE F <> ''BUDGET'' AND G IS NOT NULL GROUP BY F ORDER BY SUM(G) DESC LABEL F ''Category'', SUM(G) ''Total Spent (INR)''", 1)

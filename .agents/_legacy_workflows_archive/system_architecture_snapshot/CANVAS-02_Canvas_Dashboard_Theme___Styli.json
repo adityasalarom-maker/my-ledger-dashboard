@@ -1,0 +1,27 @@
+// ================================================================
+// ASSET: CANVAS-02 - Canvas Dashboard Theme & Styling Specifications
+// TYPE: JSON / CSS Config | TARGET: Canvas Component Theme Settings
+// NOTES: Design token configuration for Canvas components. Specifies color palettes, dark mode surfaces, high contrast accessibility rules, and chart styling tokens used in the Ledger Analytics Dashboard.
+// ================================================================
+
+{
+  "theme": {
+    "background": "#0f172a",
+    "surface": "#1e293b",
+    "surfaceBorder": "#334155",
+    "textPrimary": "#f8fafc",
+    "textSecondary": "#94a3b8",
+    "accentInflow": "#10b981",
+    "accentOutflow": "#f43f5e",
+    "accentBalance": "#06b6d4",
+    "accentWarning": "#f59e0b"
+  },
+  "fonts": {
+    "primary": "Inter, Roboto, sans-serif",
+    "tabularNumbers": "monospace, Roboto"
+  },
+  "chartConfig": {
+    "donutColors": ["#10b981", "#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#06b6d4", "#14b8a6", "#64748b"],
+    "barColors": { "inflow": "#10b981", "outflow": "#f43f5e" }
+  }
+}

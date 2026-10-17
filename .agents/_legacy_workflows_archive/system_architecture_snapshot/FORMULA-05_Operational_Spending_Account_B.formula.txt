@@ -1,0 +1,7 @@
+// ================================================================
+// ASSET: FORMULA-05 - Operational Spending Account Balance (Wallet Balances)
+// TYPE: Sheets Formula | TARGET: Summary / Auto Bank Cash Flow Tabs
+// NOTES: Computes actual remaining liquidity inside a specific operational wallet (e.g., Hom Cash, PNB Online) by subtracting cumulative outflows from cumulative credits.
+// ================================================================
+
+=SUMIFS(LEDGER!J:J, LEDGER!E:E, "Hom Cash") - SUMIFS(LEDGER!G:G, LEDGER!E:E, "Hom Cash")

@@ -1,0 +1,14 @@
+// ================================================================
+// ASSET: GAS-03 - Telegram Webhook Registration & Deployment Specification
+// TYPE: HTTPS Endpoint Webhook | TARGET: Browser / Terminal / API Client
+// NOTES: URL pattern and curl instruction to activate Telegram bot webhook and bind it to Google Apps Script published web app execution endpoint.
+// ================================================================
+
+https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/setWebhook?url=<YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL>
+
+Expected JSON Response from Telegram Server:
+{
+  "ok": true,
+  "result": true,
+  "description": "Webhook was set"
+}

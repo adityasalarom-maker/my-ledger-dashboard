@@ -1,0 +1,7 @@
+// ================================================================
+// ASSET: FORMULA-03 - Monthly Outflow Aggregator (Excluding Budget)
+// TYPE: Sheets Formula | TARGET: Summary / Dashboard KPI Cells
+// NOTES: Calculates pure operational household expenditure for a given month by filtering out capital funding transfers ('BUDGET').
+// ================================================================
+
+=SUMIFS(LEDGER!G2:G, LEDGER!M2:M, "Jan", LEDGER!F2:F, "<>BUDGET")
